@@ -1,0 +1,2 @@
+# POS
+Aplikasi POS Sederhana
