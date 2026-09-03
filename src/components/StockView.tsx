@@ -47,7 +47,7 @@ export default function StockView({ stockMap, onSetStock, onRestockOne, onRestoc
         </div>
         <button
           onClick={onRestockAll}
-          className="flex items-center gap-2 rounded-2xl bg-gold px-4 py-2.5 text-sm font-bold text-ink shadow-lift transition hover:bg-[#f7b644] active:scale-[0.97]"
+          className="flex items-center gap-2 rounded-stamp bg-gold px-4 py-2.5 text-sm font-bold text-ink shadow-lift transition hover:bg-[#f7b644] active:scale-[0.97]"
         >
           <IconRefresh size={16} strokeWidth={2.4} />
           Isi Ulang Semua
@@ -55,7 +55,7 @@ export default function StockView({ stockMap, onSetStock, onRestockOne, onRestoc
       </div>
 
       {/* Strip ringkasan */}
-      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border-2 border-ink/8 bg-card px-5 py-3.5 shadow-sm">
+      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border-2 border-ink/8 bg-card px-5 py-3.5 shadow-sm">
         <span className="flex items-center gap-2 text-sm font-semibold text-ink/70">
           <IconBox size={16} className="text-pine" />
           <b className="font-mono text-base text-ink tabular">{rows.length}</b> SKU terdaftar
@@ -82,7 +82,7 @@ export default function StockView({ stockMap, onSetStock, onRestockOne, onRestoc
             <li
               key={p.id}
               style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}
-              className={`flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border-2 bg-card p-3 shadow-sm transition-colors ${
+              className={`flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-3 rounded-card border-2 bg-card p-3 shadow-sm transition-colors ${
                 soldOut
                   ? "border-tomato/40"
                   : lowStock

@@ -32,6 +32,11 @@ interface Props {
 export default function Header({ view, onView, cashiers, cashierId, onCashier, todayTotal, onSettings }: Props) {
   const [open, setOpen] = useState(false);
   const cashier = cashiers.find((c) => c.id === cashierId) ?? cashiers[0];
+  const todayLabel = new Date().toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 
   return (
     <header className="relative z-40 border-b border-ink/10 bg-paper/92 backdrop-blur">
@@ -43,8 +48,8 @@ export default function Header({ view, onView, cashiers, cashierId, onCashier, t
             <p className="font-display text-lg font-black italic tracking-tight text-ink">
               Kopi Senja
             </p>
-            <p className="mt-0.5 text-[9px] font-bold tracking-[0.32em] text-mist">
-              POINT OF SALE
+            <p className="mt-0.5 text-[10px] font-semibold text-mist">
+              {todayLabel} · Meja Kasir 01
             </p>
           </div>
         </div>
@@ -118,7 +123,7 @@ export default function Header({ view, onView, cashiers, cashierId, onCashier, t
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
                 <div
-                  className="absolute right-0 top-full z-50 mt-2 w-52 animate-drop rounded-2xl border-2 border-ink/8 bg-card p-1.5 shadow-deep"
+                  className="absolute right-0 top-full z-50 mt-2 w-52 animate-drop rounded-card border-2 border-ink/8 bg-card p-1.5 shadow-deep"
                   role="listbox"
                 >
                   <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-mist">

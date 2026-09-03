@@ -66,7 +66,7 @@ export function PinModal({ title, pin, onSuccess, onClose }: PinModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xs animate-pop rounded-3xl border-2 border-ink/10 bg-card p-6 text-center shadow-deep"
+        className="w-full max-w-xs animate-pop rounded-panel border-2 border-ink/10 bg-card p-6 text-center shadow-deep"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -81,7 +81,7 @@ export function PinModal({ title, pin, onSuccess, onClose }: PinModalProps) {
         </button>
 
         <span
-          className={`mx-auto grid h-12 w-12 place-items-center rounded-2xl transition-colors ${
+          className={`mx-auto grid h-12 w-12 place-items-center rounded-stamp transition-colors ${
             ok ? "bg-moss text-milk" : error ? "bg-tomato text-milk" : "bg-gold text-ink"
           }`}
         >
@@ -115,7 +115,7 @@ export function PinModal({ title, pin, onSuccess, onClose }: PinModalProps) {
               onClick={() =>
                 k === "C" ? setValue("") : k === "⌫" ? setValue((v) => v.slice(0, -1)) : press(k)
               }
-              className={`flex h-12 items-center justify-center rounded-xl font-mono text-lg font-bold transition-all duration-150 active:scale-90 ${
+              className={`flex h-12 items-center justify-center rounded-stamp font-mono text-lg font-bold transition-all duration-150 active:scale-90 ${
                 k === "C" || k === "⌫"
                   ? "bg-ink/6 text-ink/55 hover:bg-tomato/15 hover:text-tomato"
                   : "bg-ink/6 text-ink hover:bg-gold hover:text-ink"
@@ -175,12 +175,12 @@ export function SettingsModal({ pin, onChangePin, onResetAll, onClose, notify }:
   };
 
   const inputCls =
-    "w-full rounded-xl border-2 border-ink/10 bg-paper px-3 py-2 font-mono text-sm font-bold tracking-[0.3em] text-ink outline-none transition placeholder:tracking-normal placeholder:font-sans placeholder:font-medium placeholder:text-ink/30 focus:border-pine";
+    "w-full rounded-stamp border-2 border-ink/10 bg-paper px-3 py-2 font-mono text-sm font-bold tracking-[0.3em] text-ink outline-none transition placeholder:tracking-normal placeholder:font-sans placeholder:font-medium placeholder:text-ink/30 focus:border-pine";
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4 backdrop-blur-[3px]" onClick={onClose}>
       <div
-        className="w-full max-w-sm animate-pop rounded-3xl border-2 border-ink/10 bg-card p-6 shadow-deep"
+        className="w-full max-w-sm animate-pop rounded-panel border-2 border-ink/10 bg-card p-6 shadow-deep"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -211,14 +211,14 @@ export function SettingsModal({ pin, onChangePin, onResetAll, onClose, notify }:
           )}
           <button
             onClick={submitPin}
-            className="mt-3 w-full rounded-xl bg-pine px-4 py-2.5 text-sm font-bold text-milk transition hover:bg-pine-deep active:scale-[0.98]"
+            className="mt-3 w-full rounded-stamp bg-pine px-4 py-2.5 text-sm font-bold text-milk transition hover:bg-pine-deep active:scale-[0.98]"
           >
             Simpan PIN Baru
           </button>
         </div>
 
         {/* Zona berbahaya */}
-        <div className="mt-6 rounded-2xl border-2 border-tomato/30 bg-tomato/8 p-4">
+        <div className="mt-6 rounded-card border-2 border-tomato/30 bg-tomato/8 p-4">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-tomato">
             <IconAlert size={13} /> Zona Berbahaya
           </p>
@@ -228,7 +228,7 @@ export function SettingsModal({ pin, onChangePin, onResetAll, onClose, notify }:
           </p>
           <button
             onClick={onResetAll}
-            className="mt-3 w-full rounded-xl bg-tomato px-4 py-2.5 text-sm font-bold text-milk transition hover:bg-[#b8431f] active:scale-[0.98]"
+            className="mt-3 w-full rounded-stamp bg-tomato px-4 py-2.5 text-sm font-bold text-milk transition hover:bg-[#b8431f] active:scale-[0.98]"
           >
             Reset Semua Data
           </button>

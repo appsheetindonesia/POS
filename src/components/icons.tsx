@@ -66,19 +66,31 @@ export const IconReceipt = (p: P) => (
   </svg>
 );
 
-export const IconRegister = (p: P) => (
-  <svg {...base(p)}>
-    <path d="M4 10h16l1.5 9a1 1 0 0 1-1 1.2h-17a1 1 0 0 1-1-1.2L4 10z" />
-    <path d="M6 10 7.5 4.5A1.5 1.5 0 0 1 9 3.5h6a1.5 1.5 0 0 1 1.5 1L18 10M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h7" />
-  </svg>
-);
+/* ── Glyph merek duotone: isi + aksen emas, berbeda dari ikon utilitas ── */
+export const IconRegister = (p: P) => {
+  const { size = 20, ...rest } = p;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" {...rest}>
+      <path d="M5.9 9.5 7.4 4.9A1.7 1.7 0 0 1 9 3.7h6a1.7 1.7 0 0 1 1.6 1.2l1.5 4.6H5.9Z" fill="currentColor" opacity="0.42" />
+      <path d="M3.6 11.3h16.8l1.2 7.7a1.6 1.6 0 0 1-1.6 1.8H4a1.6 1.6 0 0 1-1.6-1.8l1.2-7.7Z" fill="currentColor" />
+      <rect x="6.6" y="14" width="6.4" height="2.1" rx="1" fill="#F0A82D" />
+      <circle cx="16.6" cy="14.9" r="1.05" fill="#F0A82D" />
+      <circle cx="16.6" cy="18" r="1.05" fill="#F0A82D" opacity="0.55" />
+    </svg>
+  );
+};
 
-export const IconHistory = (p: P) => (
-  <svg {...base(p)}>
-    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-    <path d="M3 3v5h5M12 7v5l3.5 2" />
-  </svg>
-);
+export const IconHistory = (p: P) => {
+  const { size = 20, ...rest } = p;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" {...rest}>
+      <circle cx="12" cy="12.6" r="8.4" fill="currentColor" opacity="0.42" />
+      <circle cx="12" cy="12.6" r="6" fill="currentColor" />
+      <path d="M12 9.4v3.4l2.5 1.7" stroke="#F0A82D" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.2 1.9 4.2 5.6l4.1-.7L6.2 1.9Z" fill="#F0A82D" />
+    </svg>
+  );
+};
 
 export const IconPrinter = (p: P) => (
   <svg {...base(p)}>
@@ -135,12 +147,17 @@ export const IconCup = (p: P) => (
   </svg>
 );
 
-export const IconBox = (p: P) => (
-  <svg {...base(p)}>
-    <path d="M21 8 12 3 3 8v8l9 5 9-5V8z" />
-    <path d="m3 8 9 5 9-5M12 13v8" />
-  </svg>
-);
+export const IconBox = (p: P) => {
+  const { size = 20, ...rest } = p;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" {...rest}>
+      <path d="M12 2.9 3.6 7.2v9.6l8.4 4.3 8.4-4.3V7.2L12 2.9Z" fill="currentColor" opacity="0.42" />
+      <path d="M3.6 7.2 12 11.5l8.4-4.3L12 2.9 3.6 7.2Z" fill="currentColor" />
+      <path d="M12 11.5v9.6" stroke="#F0A82D" strokeWidth="1.9" strokeLinecap="round" />
+      <path d="m7.8 5.1 8.3 4.2" stroke="#F0A82D" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+};
 
 export const IconSettings = (p: P) => (
   <svg {...base(p)}>

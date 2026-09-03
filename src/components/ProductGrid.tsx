@@ -89,7 +89,7 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
             value={query}
             onChange={(e) => onQuery(e.target.value)}
             placeholder="Cari menu… mis. aren, matcha, nasi goreng"
-            className="w-full rounded-2xl border-2 border-ink/10 bg-card py-3 pl-11 pr-10 text-sm font-medium text-ink shadow-sm outline-none transition-all placeholder:text-ink/35 focus:border-pine focus:shadow-lift"
+            className="w-full rounded-stamp border-2 border-ink/10 bg-card py-3 pl-11 pr-10 text-sm font-medium text-ink shadow-sm outline-none transition-all placeholder:text-ink/35 focus:border-pine focus:shadow-lift"
           />
           {query && (
             <button
@@ -163,7 +163,7 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
                 onClick={() => !soldOut && onAdd(p)}
                 aria-disabled={soldOut}
                 style={{ animationDelay: `${Math.min(i, 14) * 35}ms` }}
-                className={`group relative flex animate-fade-up flex-col overflow-hidden rounded-2xl border-2 bg-card text-left shadow-sm transition-all duration-200 ${
+                className={`group relative flex animate-fade-up flex-col overflow-hidden rounded-card border-2 bg-card text-left shadow-sm transition-all duration-200 ${
                   soldOut
                     ? "cursor-not-allowed border-ink/8 opacity-90"
                     : "border-ink/8 hover:-translate-y-1 hover:border-pine/35 hover:shadow-lift active:translate-y-0 active:scale-[0.98]"

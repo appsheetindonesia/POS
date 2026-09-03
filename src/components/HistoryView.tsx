@@ -26,7 +26,7 @@ interface Props {
   notify: (text: string, tone?: "success" | "info" | "warn") => void;
 }
 
-const CARD = "rounded-2xl border-2 border-ink/8 bg-card p-4 shadow-sm";
+const CARD = "rounded-card border-2 border-ink/8 bg-card p-4 shadow-sm";
 
 const ChartTip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -61,6 +61,22 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
   const todayRevenue = today.reduce((s, t) => s + t.total, 0);
   const todayItems = today.reduce((s, t) => s + t.itemCount, 0);
   const avg = today.length ? Math.round(todayRevenue / today.length) : 0;
+
+  const peakHour = useMemo(() => {
+    const counts = new Array(24).fill(0) as number[];
+    today.forEach((t) => counts[new Date(t.timestamp).getHours()]++);
+    const max = Math.max(...counts);
+    if (!max) return null;
+    const h = counts.indexOf(max);
+    return `${String(h).padStart(2, "0")}.00–${String((h + 1) % 24).padStart(2, "0")}.00`;
+  }, [today]);
+
+  const topMethod = useMemo(() => {
+    const m: Record<string, number> = {};
+    today.forEach((t) => (m[t.method] = (m[t.method] ?? 0) + 1));
+    const best = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
+    return best ? `${best[0]} · ${best[1]} nota` : null;
+  }, [today]);
 
   const hourly = useMemo(
     () =>
@@ -150,14 +166,14 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
         <div className="flex gap-2">
           <button
             onClick={exportCsv}
-            className="flex items-center gap-2 rounded-2xl bg-pine px-4 py-2.5 text-sm font-bold text-milk shadow-lift transition hover:bg-pine-deep active:scale-[0.97]"
+            className="flex items-center gap-2 rounded-stamp bg-pine px-4 py-2.5 text-sm font-bold text-milk shadow-lift transition hover:bg-pine-deep active:scale-[0.97]"
           >
             <IconDownload size={16} strokeWidth={2.4} />
             Ekspor CSV
           </button>
           <button
             onClick={onClear}
-            className="flex items-center gap-2 rounded-2xl border-2 border-tomato/40 bg-card px-4 py-2.5 text-sm font-bold text-tomato transition hover:bg-tomato hover:text-milk active:scale-[0.97]"
+            className="flex items-center gap-2 rounded-stamp border-2 border-tomato/40 bg-card px-4 py-2.5 text-sm font-bold text-tomato transition hover:bg-tomato hover:text-milk active:scale-[0.97]"
           >
             <IconTrash size={16} />
             Hapus
@@ -165,25 +181,49 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
         </div>
       </div>
 
-      {/* Strip statistik */}
-      <div className="mt-5 grid grid-cols-2 divide-y divide-ink/8 overflow-hidden rounded-2xl border-2 border-ink/8 bg-card shadow-sm lg:grid-cols-4 lg:divide-x lg:divide-y-0">
-        {[
-          { label: "Pendapatan Hari Ini", value: formatIDR(todayRevenue), gold: true },
-          { label: "Transaksi", value: String(today.length) },
-          { label: "Item Terjual", value: String(todayItems) },
-          { label: "Rata-rata Nota", value: formatIDR(avg) },
-        ].map((s) => (
-          <div key={s.label} className="p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-mist">{s.label}</p>
-            <p
-              className={`mt-1 font-mono font-bold tabular ${
-                s.gold ? "text-2xl text-gold-deep" : "text-xl text-ink"
-              }`}
-            >
-              {s.value}
+      {/* Statistik asimetris: satu angka dominan + kartu satelit */}
+      <div className="mt-5 grid gap-4 lg:grid-cols-[1.55fr_1fr]">
+        <div className="relative overflow-hidden rounded-card border-2 border-pine-deep bg-pine-deep p-5 text-milk shadow-deep">
+          <div className="pointer-events-none absolute -right-16 -top-24 h-60 w-60 rounded-full bg-gold/15 blur-2xl" aria-hidden />
+          <div className="panel-texture pointer-events-none absolute inset-0" aria-hidden />
+          <div className="relative">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-milk/50">
+              Pendapatan hari ini
             </p>
+            <p
+              key={todayRevenue}
+              className="mt-1.5 animate-badge font-display text-[40px] font-black italic leading-none text-gold tabular lg:text-[54px]"
+            >
+              {formatIDR(todayRevenue)}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-milk/65">
+              <span>
+                <b className="font-mono text-sm text-milk tabular">{today.length}</b> nota
+              </span>
+              <span className="h-3 w-px bg-milk/20" aria-hidden />
+              <span>
+                <b className="font-mono text-sm text-milk tabular">{todayItems}</b> item terjual
+              </span>
+              <span className="h-3 w-px bg-milk/20" aria-hidden />
+              <span>
+                rata-rata <b className="font-mono text-sm text-gold tabular">{formatIDR(avg)}</b>/nota
+              </span>
+            </div>
           </div>
-        ))}
+        </div>
+
+        <div className="divide-y divide-ink/8 overflow-hidden rounded-card border-2 border-ink/8 bg-card shadow-sm">
+          {[
+            { k: "Jam tersibuk", v: peakHour ?? "—" },
+            { k: "Metode utama", v: topMethod ?? "—" },
+            { k: "Transaksi tersimpan", v: `${transactions.length} nota` },
+          ].map((r) => (
+            <div key={r.k} className="flex items-center justify-between px-4 py-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-mist">{r.k}</span>
+              <span className="font-mono text-sm font-bold text-ink tabular">{r.v}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Grafik baris 1 */}
@@ -365,10 +405,11 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
           </p>
         ) : (
           <ul className="mt-2">
-            {filtered.map((t) => (
+            {filtered.map((t, i) => (
               <li
                 key={t.id}
-                className="group flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl px-3 py-3 transition-colors hover:bg-ink/4"
+                style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                className="group flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl px-3 py-3 transition-colors hover:bg-ink/4"
               >
                 <span className="w-24 font-mono text-sm font-bold text-ink">{t.invoice}</span>
                 <span className="w-24">

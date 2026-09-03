@@ -89,7 +89,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4 backdrop-blur-[3px]" onClick={onClose}>
       <div
-        className="w-full max-w-md animate-pop overflow-hidden rounded-3xl bg-card shadow-deep"
+        className="w-full max-w-md animate-pop overflow-hidden rounded-panel bg-card shadow-deep"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -124,7 +124,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
                 <button
                   key={m.name}
                   onClick={() => setMethod(m.name)}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-3 text-xs font-bold transition-all duration-200 ${
+                  className={`flex flex-col items-center gap-1.5 rounded-stamp border-2 px-2 py-3 text-xs font-bold transition-all duration-200 ${
                     active
                       ? "border-pine bg-pine text-milk shadow-lift"
                       : "border-ink/10 bg-paper text-ink/60 hover:-translate-y-0.5 hover:border-pine/40 hover:text-ink"
@@ -143,7 +143,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
               <label className="text-xs font-bold uppercase tracking-wider text-ink/50">
                 Uang diterima
               </label>
-              <div className="mt-1.5 flex items-center gap-2 rounded-2xl border-2 border-ink/10 bg-paper px-4 py-3 transition-all focus-within:border-pine focus-within:shadow-lift">
+              <div className="mt-1.5 flex items-center gap-2 rounded-stamp border-2 border-ink/10 bg-paper px-4 py-3 transition-all focus-within:border-pine focus-within:shadow-lift">
                 <span className="font-mono text-lg font-bold text-ink/40">Rp</span>
                 <input
                   autoFocus
@@ -171,7 +171,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
               </div>
 
               <div
-                className={`mt-4 flex items-center justify-between rounded-2xl px-4 py-3 transition-colors ${
+                className={`mt-4 flex items-center justify-between rounded-stamp px-4 py-3 transition-colors ${
                   cash === 0
                     ? "bg-ink/5 text-ink/45"
                     : change >= 0
@@ -192,7 +192,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
 
           {/* QRIS */}
           {method === "QRIS" && (
-            <div className="mt-5 flex animate-drop flex-col items-center rounded-2xl border-2 border-dashed border-pine/30 bg-pine/5 px-4 py-5 text-center">
+            <div className="mt-5 flex animate-drop flex-col items-center rounded-card border-2 border-dashed border-pine/30 bg-pine/5 px-4 py-5 text-center">
               <PseudoQr seed={invoice + totals.total} />
               <p className="mt-3 text-sm font-bold text-pine">Scan dengan aplikasi apa pun</p>
               <p className="mt-1 max-w-[260px] text-xs leading-relaxed text-ink/55">
@@ -206,7 +206,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
 
           {/* Kartu */}
           {method === "Kartu Debit" && (
-            <div className="mt-5 animate-drop rounded-2xl border-2 border-dashed border-pine/30 bg-pine/5 px-5 py-5">
+            <div className="mt-5 animate-drop rounded-card border-2 border-dashed border-pine/30 bg-pine/5 px-5 py-5">
               <div className="flex items-center gap-3">
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-pine text-milk">
                   <IconCard size={22} strokeWidth={1.8} />
@@ -229,7 +229,7 @@ export default function PaymentModal({ totals, itemCount, invoice, onClose, onCo
           <button
             onClick={() => canConfirm && onConfirm(method, method === "Tunai" ? cash : null)}
             disabled={!canConfirm}
-            className="group mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gold px-5 py-3.5 font-bold text-ink shadow-lift transition-all duration-200 enabled:hover:bg-[#f7b644] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
+            className="group mt-5 flex w-full items-center justify-center gap-2 rounded-stamp bg-gold px-5 py-3.5 font-bold text-ink shadow-lift transition-all duration-200 enabled:hover:bg-[#f7b644] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
           >
             <IconCheck size={18} strokeWidth={2.6} />
             Konfirmasi Pembayaran

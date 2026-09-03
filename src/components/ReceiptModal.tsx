@@ -142,21 +142,21 @@ export default function ReceiptModal({ tx, onClose, closeLabel = "Transaksi Baru
               downloadReceiptPdf(tx);
               onDownloaded?.();
             }}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-gold px-2 py-3 text-[13px] font-bold text-ink shadow-lift transition hover:bg-[#f7b644] active:scale-[0.97]"
+            className="flex items-center justify-center gap-1.5 rounded-stamp bg-gold px-2 py-3 text-[13px] font-bold text-ink shadow-lift transition hover:bg-[#f7b644] active:scale-[0.97]"
           >
             <IconDownload size={15} strokeWidth={2.4} />
             PDF
           </button>
           <button
             onClick={() => window.print()}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-pine px-2 py-3 text-[13px] font-bold text-milk shadow-lift transition hover:bg-pine-deep active:scale-[0.97]"
+            className="flex items-center justify-center gap-1.5 rounded-stamp bg-pine px-2 py-3 text-[13px] font-bold text-milk shadow-lift transition hover:bg-pine-deep active:scale-[0.97]"
           >
             <IconPrinter size={15} />
             Cetak
           </button>
           <button
             onClick={onClose}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-milk px-2 py-3 text-[13px] font-bold text-pine shadow-lift transition hover:bg-white active:scale-[0.97]"
+            className="flex items-center justify-center gap-1.5 rounded-stamp bg-milk px-2 py-3 text-[13px] font-bold text-pine shadow-lift transition hover:bg-white active:scale-[0.97]"
           >
             <IconCheck size={15} strokeWidth={2.6} />
             {closeLabel === "Tutup" ? "Tutup" : "Baru"}

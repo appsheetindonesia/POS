@@ -335,7 +335,7 @@ export default function App() {
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/20 bg-pine-deep p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-deep lg:hidden">
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex w-full items-center gap-3 rounded-2xl bg-gold px-4 py-3 font-bold text-ink transition active:scale-[0.98]"
+            className="flex w-full items-center gap-3 rounded-stamp bg-gold px-4 py-3 font-bold text-ink transition active:scale-[0.98]"
           >
             <span className="relative">
               <IconCart size={20} strokeWidth={2.2} />
