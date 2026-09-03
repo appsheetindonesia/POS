@@ -6,6 +6,7 @@ export interface Product {
   price: number;
   category: Category;
   emoji: string;
+  image: string;
   desc: string;
   popular?: boolean;
 }

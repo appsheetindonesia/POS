@@ -1,9 +1,47 @@
+import { useState } from "react";
 import { CATEGORIES, CATEGORY_TINT, PRODUCTS } from "../data/products";
 import { formatIDR } from "../lib/format";
 import type { Category, Product } from "../types";
 import { IconPlus, IconSearch, IconX } from "./icons";
 
 export type CategoryFilter = Category | "Semua";
+
+/** Foto menu dengan fallback emoji bila gambar gagal dimuat */
+function MenuImage({ product, className = "" }: { product: Product; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const tint = CATEGORY_TINT[product.category];
+
+  if (failed) {
+    return (
+      <div className={`grid h-full w-full place-items-center ${tint.bg}`}>
+        <span className="text-6xl" aria-hidden>
+          {product.emoji}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <>
+      {!loaded && (
+        <div
+          className="absolute inset-0 animate-shimmer bg-[linear-gradient(100deg,rgb(20_35_28/0.06)_40%,rgb(240_168_45/0.12)_50%,rgb(20_35_28/0.06)_60%)] bg-[length:200%_100%]"
+          aria-hidden
+        />
+      )}
+      <img
+        src={product.image}
+        alt={product.name}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+        className={`h-full w-full object-cover transition-[opacity,transform] duration-500 group-hover:scale-110 ${
+          loaded ? "opacity-100" : "opacity-0"
+        } ${className}`}
+      />
+    </>
+  );
+}
 
 interface Props {
   query: string;
@@ -33,7 +71,7 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      {/* Search + filter */}
+      {/* Pencarian + filter */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
         <label className="group relative flex flex-1 items-center">
           <span className="pointer-events-none absolute left-4 text-mist transition-colors group-focus-within:text-pine">
@@ -42,7 +80,7 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
           <input
             value={query}
             onChange={(e) => onQuery(e.target.value)}
-            placeholder="Cari menu… mis. kopi aren, croissant"
+            placeholder="Cari menu… mis. aren, matcha, nasi goreng"
             className="w-full rounded-2xl border-2 border-ink/10 bg-card py-3 pl-11 pr-10 text-sm font-medium text-ink shadow-sm outline-none transition-all placeholder:text-ink/35 focus:border-pine focus:shadow-lift"
           />
           {query && (
@@ -84,7 +122,7 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid menu */}
       {list.length === 0 ? (
         <div className="mt-16 flex animate-fade-up flex-col items-center text-center">
           <span className="grid h-20 w-20 place-items-center rounded-full bg-ink/6 text-4xl" aria-hidden>
@@ -116,14 +154,14 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
                 style={{ animationDelay: `${Math.min(i, 14) * 35}ms` }}
                 className="group relative flex animate-fade-up flex-col overflow-hidden rounded-2xl border-2 border-ink/8 bg-card text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-pine/35 hover:shadow-lift active:translate-y-0 active:scale-[0.98]"
               >
-                {/* Tile emoji */}
-                <div className={`relative grid h-24 place-items-center ${tint.bg} sm:h-28`}>
-                  <span
-                    className="text-5xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-115"
+                {/* Foto menu */}
+                <div className="relative h-32 overflow-hidden sm:h-40">
+                  <MenuImage product={p} />
+                  {/* Scrim agar badge terbaca */}
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-ink/55 to-transparent"
                     aria-hidden
-                  >
-                    {p.emoji}
-                  </span>
+                  />
                   {p.popular && (
                     <span className="absolute left-2.5 top-2.5 rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink shadow-sm">
                       ★ Terlaris
@@ -137,13 +175,15 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
                       ×{inCart}
                     </span>
                   )}
+                  <span
+                    className={`absolute bottom-2 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-[2px] ${tint.chip}`}
+                  >
+                    {p.category}
+                  </span>
                 </div>
 
                 <div className="flex flex-1 flex-col p-3">
-                  <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint.chip}`}>
-                    {p.category}
-                  </span>
-                  <h3 className="mt-1.5 text-sm font-bold leading-snug text-ink">{p.name}</h3>
+                  <h3 className="text-sm font-bold leading-snug text-ink">{p.name}</h3>
                   <p className="mt-0.5 line-clamp-1 text-xs text-ink/50">{p.desc}</p>
 
                   <div className="mt-auto flex items-end justify-between pt-3">
