@@ -1,7 +1,31 @@
+import { useState } from "react";
 import { PRODUCT_MAP } from "../data/products";
 import { formatIDR } from "../lib/format";
 import type { CartItem, Totals } from "../types";
 import { IconArrowRight, IconBroom, IconMinus, IconPlus, IconTrash } from "./icons";
+
+/** Thumbnail foto di daftar pesanan, fallback emoji bila gagal dimuat */
+function CartThumb({ image, emoji, name }: { image: string; emoji: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-milk/8 text-xl" aria-hidden>
+        {emoji}
+      </span>
+    );
+  }
+  return (
+    <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-milk/8 ring-1 ring-milk/15">
+      <img
+        src={image}
+        alt={name}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="h-full w-full object-cover"
+      />
+    </span>
+  );
+}
 
 interface Props {
   items: CartItem[];
@@ -80,9 +104,7 @@ export default function CartPanel({
                   className="group animate-drop rounded-2xl border border-milk/8 bg-ink/25 p-3 transition-colors hover:border-milk/20 hover:bg-ink/40"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-milk/8 text-xl" aria-hidden>
-                      {p.emoji}
-                    </span>
+                    <CartThumb image={p.image} emoji={p.emoji} name={p.name} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className="truncate text-sm font-bold leading-snug">{p.name}</p>
