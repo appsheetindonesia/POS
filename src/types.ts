@@ -6,8 +6,10 @@ export interface Product {
   price: number;
   category: Category;
   emoji: string;
-  image: string;
   desc: string;
+  image: string;
+  /** Stok awal — nilai berjalan disimpan terpisah di localStorage */
+  stock: number;
   popular?: boolean;
 }
 
@@ -17,8 +19,16 @@ export interface CartItem {
 }
 
 export type PaymentMethod = "Tunai" | "QRIS" | "Kartu Debit";
+export type OrderType = "Dine-in" | "Takeaway";
+
+export interface Cashier {
+  id: string;
+  name: string;
+  color: string;
+}
 
 export interface SaleLine {
+  productId?: string;
   name: string;
   qty: number;
   price: number;
@@ -28,7 +38,10 @@ export interface Transaction {
   id: string;
   invoice: string;
   timestamp: number;
+  cashierId?: string;
   cashier: string;
+  orderType?: OrderType;
+  table?: string | null;
   lines: SaleLine[];
   itemCount: number;
   subtotal: number;

@@ -7,14 +7,14 @@ import { IconPlus, IconSearch, IconX } from "./icons";
 export type CategoryFilter = Category | "Semua";
 
 /** Foto menu dengan fallback emoji bila gambar gagal dimuat */
-function MenuImage({ product, className = "" }: { product: Product; className?: string }) {
+function MenuImage({ product, dim = false }: { product: Product; dim?: boolean }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const tint = CATEGORY_TINT[product.category];
 
   if (failed) {
     return (
-      <div className={`grid h-full w-full place-items-center ${tint.bg}`}>
+      <div className={`grid h-full w-full place-items-center ${tint.bg} ${dim ? "opacity-50 grayscale" : ""}`}>
         <span className="text-6xl" aria-hidden>
           {product.emoji}
         </span>
@@ -23,7 +23,7 @@ function MenuImage({ product, className = "" }: { product: Product; className?: 
   }
   return (
     <>
-      {!loaded && (
+      {!loaded && !dim && (
         <div
           className="absolute inset-0 animate-shimmer bg-[linear-gradient(100deg,rgb(20_35_28/0.06)_40%,rgb(240_168_45/0.12)_50%,rgb(20_35_28/0.06)_60%)] bg-[length:200%_100%]"
           aria-hidden
@@ -36,12 +36,19 @@ function MenuImage({ product, className = "" }: { product: Product; className?: 
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
         className={`h-full w-full object-cover transition-[opacity,transform] duration-500 group-hover:scale-110 ${
-          loaded ? "opacity-100" : "opacity-0"
-        } ${className}`}
+          loaded || dim ? "opacity-100" : "opacity-0"
+        } ${dim ? "opacity-50 grayscale" : ""}`}
       />
     </>
   );
 }
+
+const stockPillCls = (stock: number) =>
+  stock <= 2
+    ? "bg-tomato text-milk"
+    : stock <= 5
+      ? "bg-gold text-ink"
+      : "bg-ink/70 text-milk/95";
 
 interface Props {
   query: string;
@@ -50,9 +57,10 @@ interface Props {
   onCategory: (c: CategoryFilter) => void;
   onAdd: (p: Product) => void;
   qtyInCart: Record<string, number>;
+  stockMap: Record<string, number>;
 }
 
-export default function ProductGrid({ query, onQuery, category, onCategory, onAdd, qtyInCart }: Props) {
+export default function ProductGrid({ query, onQuery, category, onCategory, onAdd, qtyInCart, stockMap }: Props) {
   const list = PRODUCTS.filter((p) => {
     const matchCat = category === "Semua" || p.category === category;
     const q = query.trim().toLowerCase();
@@ -147,22 +155,40 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
           {list.map((p, i) => {
             const tint = CATEGORY_TINT[p.category];
             const inCart = qtyInCart[p.id] ?? 0;
+            const stock = stockMap[p.id] ?? 0;
+            const soldOut = stock <= 0;
             return (
               <button
                 key={p.id}
-                onClick={() => onAdd(p)}
+                onClick={() => !soldOut && onAdd(p)}
+                aria-disabled={soldOut}
                 style={{ animationDelay: `${Math.min(i, 14) * 35}ms` }}
-                className="group relative flex animate-fade-up flex-col overflow-hidden rounded-2xl border-2 border-ink/8 bg-card text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-pine/35 hover:shadow-lift active:translate-y-0 active:scale-[0.98]"
+                className={`group relative flex animate-fade-up flex-col overflow-hidden rounded-2xl border-2 bg-card text-left shadow-sm transition-all duration-200 ${
+                  soldOut
+                    ? "cursor-not-allowed border-ink/8 opacity-90"
+                    : "border-ink/8 hover:-translate-y-1 hover:border-pine/35 hover:shadow-lift active:translate-y-0 active:scale-[0.98]"
+                }`}
               >
                 {/* Foto menu */}
                 <div className="relative h-32 overflow-hidden sm:h-40">
-                  <MenuImage product={p} />
-                  {/* Scrim agar badge terbaca */}
+                  <MenuImage product={p} dim={soldOut} />
                   <div
                     className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-ink/55 to-transparent"
                     aria-hidden
                   />
-                  {p.popular && (
+
+                  {soldOut && (
+                    <span className="absolute inset-0 grid place-items-center">
+                      <span
+                        className="animate-pop rounded-lg border-[3px] border-tomato bg-paper/90 px-3 py-1 font-display text-sm font-black tracking-[0.25em] text-tomato shadow-lift"
+                        style={{ transform: "rotate(-8deg)" }}
+                      >
+                        HABIS
+                      </span>
+                    </span>
+                  )}
+
+                  {p.popular && !soldOut && (
                     <span className="absolute left-2.5 top-2.5 rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink shadow-sm">
                       ★ Terlaris
                     </span>
@@ -175,6 +201,15 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
                       ×{inCart}
                     </span>
                   )}
+                  {!soldOut && (
+                    <span
+                      key={stock}
+                      className={`absolute bottom-2 right-2.5 animate-badge rounded-full px-2 py-0.5 font-mono text-[10px] font-bold shadow-sm ${stockPillCls(stock)}`}
+                      title={`Sisa stok ${stock}`}
+                    >
+                      Sisa {stock}
+                    </span>
+                  )}
                   <span
                     className={`absolute bottom-2 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-[2px] ${tint.chip}`}
                   >
@@ -183,14 +218,22 @@ export default function ProductGrid({ query, onQuery, category, onCategory, onAd
                 </div>
 
                 <div className="flex flex-1 flex-col p-3">
-                  <h3 className="text-sm font-bold leading-snug text-ink">{p.name}</h3>
+                  <h3 className={`text-sm font-bold leading-snug ${soldOut ? "text-ink/45" : "text-ink"}`}>
+                    {p.name}
+                  </h3>
                   <p className="mt-0.5 line-clamp-1 text-xs text-ink/50">{p.desc}</p>
 
                   <div className="mt-auto flex items-end justify-between pt-3">
-                    <span className="font-mono text-sm font-bold text-pine tabular">
+                    <span className={`font-mono text-sm font-bold tabular ${soldOut ? "text-ink/35" : "text-pine"}`}>
                       {formatIDR(p.price)}
                     </span>
-                    <span className="grid h-8 w-8 place-items-center rounded-full bg-pine text-milk shadow-sm transition-all duration-200 group-hover:bg-gold group-hover:text-ink group-active:scale-90">
+                    <span
+                      className={`grid h-8 w-8 place-items-center rounded-full shadow-sm transition-all duration-200 ${
+                        soldOut
+                          ? "bg-ink/10 text-ink/30"
+                          : "bg-pine text-milk group-hover:bg-gold group-hover:text-ink group-active:scale-90"
+                      }`}
+                    >
                       <IconPlus size={16} strokeWidth={2.6} />
                     </span>
                   </div>

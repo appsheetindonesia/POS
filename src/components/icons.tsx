@@ -135,6 +135,69 @@ export const IconCup = (p: P) => (
   </svg>
 );
 
+export const IconBox = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 8 12 3 3 8v8l9 5 9-5V8z" />
+    <path d="m3 8 9 5 9-5M12 13v8" />
+  </svg>
+);
+
+export const IconSettings = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const IconLock = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+
+export const IconDownload = (p: P) => (
+  <svg {...base(p)}><path d="M12 3v12m-5-5 5 5 5-5M4 21h16" /></svg>
+);
+
+export const IconPlate = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="4.5" />
+  </svg>
+);
+
+export const IconBag = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M6 8h12l1 13H5L6 8z" />
+    <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+  </svg>
+);
+
+export const IconChevronDown = (p: P) => (
+  <svg {...base(p)}><path d="m6 9 6 6 6-6" /></svg>
+);
+
+export const IconBackspace = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M20 5H9L2 12l7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" />
+    <path d="m12 9 6 6m0-6-6 6" />
+  </svg>
+);
+
+export const IconRefresh = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" />
+  </svg>
+);
+
+export const IconAlert = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 3 2.5 20h19L12 3z" />
+    <path d="M12 10v4M12 17.5v.01" />
+  </svg>
+);
+
 /** Logo cangkir dengan uap yang beranimasi */
 export const LogoCup = (p: P) => {
   const { size = 30, ...rest } = p;
