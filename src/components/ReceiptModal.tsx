@@ -1,13 +1,15 @@
 import { useEffect } from "react";
 import { STORE } from "../data/products";
+import { downloadReceiptPdf } from "../lib/export";
 import { dateLong, formatIDR, timeHM } from "../lib/format";
 import type { Transaction } from "../types";
-import { IconCheck, IconPrinter, IconX } from "./icons";
+import { IconCheck, IconDownload, IconPrinter } from "./icons";
 
 interface Props {
   tx: Transaction;
   onClose: () => void;
   closeLabel?: string;
+  onDownloaded?: () => void;
 }
 
 function Barcode({ seed }: { seed: string }) {
@@ -29,7 +31,7 @@ function Barcode({ seed }: { seed: string }) {
 
 const Dash = () => <div className="my-2.5 border-t border-dashed border-ink/25" />;
 
-export default function ReceiptModal({ tx, onClose, closeLabel = "Transaksi Baru" }: Props) {
+export default function ReceiptModal({ tx, onClose, closeLabel = "Transaksi Baru", onDownloaded }: Props) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", h);
@@ -39,8 +41,8 @@ export default function ReceiptModal({ tx, onClose, closeLabel = "Transaksi Baru
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4 backdrop-blur-[3px]" onClick={onClose}>
       <div className="w-full max-w-sm animate-pop" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        {/* Paper */}
-        <div className="receipt-area max-h-[78vh] overflow-y-auto rounded-xl bg-card shadow-deep scroll-slim">
+        {/* Kertas struk */}
+        <div className="receipt-area max-h-[72vh] overflow-y-auto rounded-xl bg-card shadow-deep scroll-slim">
           <div className="ticket-edge-top" />
           <div className="px-6 pb-2 pt-1 font-mono text-[12.5px] leading-relaxed text-ink">
             <p className="text-center font-display text-2xl font-black italic tracking-tight">
@@ -57,6 +59,13 @@ export default function ReceiptModal({ tx, onClose, closeLabel = "Transaksi Baru
             <div className="flex justify-between text-[11.5px] text-ink/70">
               <span>Kasir: {tx.cashier}</span>
               <span>{timeHM(tx.timestamp)} WIB</span>
+            </div>
+            <div className="flex justify-between text-[11.5px]">
+              <span className="font-bold">
+                {tx.orderType ?? "Dine-in"}
+                {tx.table ? ` — Meja ${tx.table}` : ""}
+              </span>
+              <span className="text-ink/70">{tx.itemCount} item</span>
             </div>
             <Dash />
 
@@ -126,30 +135,33 @@ export default function ReceiptModal({ tx, onClose, closeLabel = "Transaksi Baru
           <div className="ticket-edge-bottom" />
         </div>
 
-        {/* Actions */}
-        <div className="no-print mt-3 flex gap-2">
+        {/* Aksi */}
+        <div className="no-print mt-3 grid grid-cols-3 gap-2">
+          <button
+            onClick={() => {
+              downloadReceiptPdf(tx);
+              onDownloaded?.();
+            }}
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-gold px-2 py-3 text-[13px] font-bold text-ink shadow-lift transition hover:bg-[#f7b644] active:scale-[0.97]"
+          >
+            <IconDownload size={15} strokeWidth={2.4} />
+            PDF
+          </button>
           <button
             onClick={() => window.print()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gold px-4 py-3 text-sm font-bold text-ink shadow-lift transition hover:bg-[#f7b644] active:scale-[0.98]"
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-pine px-2 py-3 text-[13px] font-bold text-milk shadow-lift transition hover:bg-pine-deep active:scale-[0.97]"
           >
-            <IconPrinter size={17} />
-            Cetak Struk
+            <IconPrinter size={15} />
+            Cetak
           </button>
           <button
             onClick={onClose}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-milk px-4 py-3 text-sm font-bold text-pine shadow-lift transition hover:bg-white active:scale-[0.98]"
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-milk px-2 py-3 text-[13px] font-bold text-pine shadow-lift transition hover:bg-white active:scale-[0.97]"
           >
-            <IconCheck size={17} strokeWidth={2.6} />
-            {closeLabel}
+            <IconCheck size={15} strokeWidth={2.6} />
+            {closeLabel === "Tutup" ? "Tutup" : "Baru"}
           </button>
         </div>
-        <button
-          onClick={onClose}
-          className="no-print absolute right-4 top-4 hidden"
-          aria-label="Tutup"
-        >
-          <IconX size={16} />
-        </button>
       </div>
     </div>
   );

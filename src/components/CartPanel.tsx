@@ -1,8 +1,31 @@
 import { useState } from "react";
 import { PRODUCT_MAP } from "../data/products";
 import { formatIDR } from "../lib/format";
-import type { CartItem, Totals } from "../types";
-import { IconArrowRight, IconBroom, IconMinus, IconPlus, IconTrash } from "./icons";
+import type { CartItem, OrderType, Totals } from "../types";
+import {
+  IconArrowRight,
+  IconBag,
+  IconBroom,
+  IconMinus,
+  IconPlate,
+  IconPlus,
+  IconTrash,
+} from "./icons";
+
+interface Props {
+  items: CartItem[];
+  totals: Totals;
+  discountPct: number;
+  onDiscountPct: (n: number) => void;
+  onQty: (productId: string, delta: number) => void;
+  onRemove: (productId: string) => void;
+  onClear: () => void;
+  onPay: () => void;
+  orderType: OrderType;
+  onOrderType: (t: OrderType) => void;
+  table: string;
+  onTable: (t: string) => void;
+}
 
 /** Thumbnail foto di daftar pesanan, fallback emoji bila gagal dimuat */
 function CartThumb({ image, emoji, name }: { image: string; emoji: string; name: string }) {
@@ -15,27 +38,14 @@ function CartThumb({ image, emoji, name }: { image: string; emoji: string; name:
     );
   }
   return (
-    <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-milk/8 ring-1 ring-milk/15">
-      <img
-        src={image}
-        alt={name}
-        loading="lazy"
-        onError={() => setFailed(true)}
-        className="h-full w-full object-cover"
-      />
-    </span>
+    <img
+      src={image}
+      alt={name}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-10 w-10 shrink-0 rounded-xl border border-milk/15 object-cover"
+    />
   );
-}
-
-interface Props {
-  items: CartItem[];
-  totals: Totals;
-  discountPct: number;
-  onDiscountPct: (n: number) => void;
-  onQty: (productId: string, delta: number) => void;
-  onRemove: (productId: string) => void;
-  onClear: () => void;
-  onPay: () => void;
 }
 
 export default function CartPanel({
@@ -47,6 +57,10 @@ export default function CartPanel({
   onRemove,
   onClear,
   onPay,
+  orderType,
+  onOrderType,
+  table,
+  onTable,
 }: Props) {
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
   const empty = items.length === 0;
@@ -72,6 +86,38 @@ export default function CartPanel({
           <IconBroom size={13} />
           Kosongkan
         </button>
+      </div>
+
+      {/* Tipe pesanan */}
+      <div className="flex flex-col gap-2.5 border-b border-milk/10 px-5 py-3">
+        <div className="flex rounded-full border border-milk/12 bg-ink/30 p-1">
+          {(["Dine-in", "Takeaway"] as OrderType[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => onOrderType(t)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-bold transition-all duration-200 ${
+                orderType === t ? "bg-gold text-ink shadow-sm" : "text-milk/55 hover:text-milk"
+              }`}
+              aria-pressed={orderType === t}
+            >
+              {t === "Dine-in" ? <IconPlate size={14} /> : <IconBag size={14} />}
+              {t}
+            </button>
+          ))}
+        </div>
+        {orderType === "Dine-in" && (
+          <label className="flex animate-drop items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-milk/55">Nomor meja</span>
+            <input
+              value={table}
+              onChange={(e) => onTable(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+              placeholder="07"
+              inputMode="numeric"
+              className="w-20 rounded-xl border-2 border-milk/15 bg-ink/30 px-3 py-1.5 text-center font-mono text-sm font-bold text-gold outline-none transition placeholder:text-milk/25 focus:border-gold"
+              aria-label="Nomor meja"
+            />
+          </label>
+        )}
       </div>
 
       {/* Items */}
