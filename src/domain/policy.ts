@@ -38,3 +38,6 @@ export const DEFAULT_CASHIER_ID = "ayu";
 
 /** Jumlah shift yang disimpan di riwayat (FIFO) */
 export const SHIFT_HISTORY_LIMIT = 50;
+
+/** Jumlah pesanan parkir maksimal */
+export const MAX_HELD_ORDERS = 10;

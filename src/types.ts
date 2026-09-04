@@ -22,6 +22,7 @@ export interface Product {
 export interface CartItem {
   productId: string;
   qty: number;
+  note?: string;
 }
 
 export type PaymentMethod = "Tunai" | "QRIS" | "Kartu Debit";
@@ -74,6 +75,16 @@ export interface ToastMsg {
   id: number;
   text: string;
   tone: ToastTone;
+}
+
+export interface HeldOrder {
+  id: string;
+  label: string;
+  items: CartItem[];
+  discountPct: number;
+  orderType: OrderType;
+  table: string;
+  createdAt: number;
 }
 
 export interface Shift {
