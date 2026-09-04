@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { CASHIERS } from "../data/products";
 import { productSalesTotals } from "../domain/sales";
+import { isVoided } from "../domain/void";
 import { downloadCsv } from "../lib/export";
 import { dateShort, formatIDR, formatIDRCompact, isSameDay, timeHM } from "../lib/format";
 import type { OrderType, Transaction } from "../types";
@@ -24,6 +25,7 @@ interface Props {
   transactions: Transaction[];
   onPrint: (tx: Transaction) => void;
   onClear: () => void;
+  onVoid?: (tx: Transaction) => void;
   notify: (text: string, tone?: "success" | "info" | "warn") => void;
 }
 
@@ -54,11 +56,14 @@ const METHOD_COLORS: Record<string, string> = {
   "Kartu Debit": "#D1502C",
 };
 
-export default function HistoryView({ transactions, onPrint, onClear, notify }: Props) {
+export default function HistoryView({ transactions, onPrint, onClear, onVoid, notify }: Props) {
   const [filter, setFilter] = useState<"Semua" | OrderType>("Semua");
   const now = Date.now();
 
-  const today = useMemo(() => transactions.filter((t) => isSameDay(t.timestamp, now)), [transactions, now]);
+  const today = useMemo(
+    () => transactions.filter((t) => isSameDay(t.timestamp, now) && !t.voided),
+    [transactions, now],
+  );
   const todayRevenue = today.reduce((s, t) => s + t.total, 0);
   const todayItems = today.reduce((s, t) => s + t.itemCount, 0);
   const avg = today.length ? Math.round(todayRevenue / today.length) : 0;
@@ -406,9 +411,16 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
               <li
                 key={t.id}
                 style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
-                className="group flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl px-3 py-3 transition-colors hover:bg-ink/4"
+                className={`group flex animate-fade-up flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl px-3 py-3 transition-colors hover:bg-ink/4 ${
+                  t.voided ? "opacity-50 line-through" : ""
+                }`}
               >
                 <span className="w-24 font-mono text-sm font-bold text-ink">{t.invoice}</span>
+                {t.voided && (
+                  <span className="rounded-full bg-tomato/15 px-2 py-0.5 text-[9px] font-black uppercase text-tomato">
+                    VOID
+                  </span>
+                )}
                 <span className="w-24">
                   <span className="block font-mono text-xs font-bold text-ink tabular">{timeHM(t.timestamp)}</span>
                   <span className="block text-[10px] font-semibold text-mist">{dateShort(t.timestamp)}</span>
@@ -444,6 +456,16 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
                 >
                   <IconPrinter size={14} />
                 </button>
+                {onVoid && !t.voided && (
+                  <button
+                    onClick={() => onVoid(t)}
+                    className="grid h-8 w-8 place-items-center rounded-full border-2 border-ink/10 text-ink/45 transition hover:border-tomato hover:bg-tomato hover:text-milk active:scale-90"
+                    aria-label={`Void ${t.invoice}`}
+                    title="Void transaksi"
+                  >
+                    🚫
+                  </button>
+                )}
               </li>
             ))}
           </ul>
