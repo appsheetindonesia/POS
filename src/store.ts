@@ -25,6 +25,7 @@ import {
   DISCOUNT_APPROVAL_PCT,
   HISTORY_LIMIT,
   SHIFT_HISTORY_LIMIT,
+  MAX_HELD_ORDERS,
   MAX_STOCK,
 } from "./domain/policy";
 import { openShift as createShift, closeShift as finishShift, shiftDifference } from "./domain/shift";
@@ -35,6 +36,7 @@ import { formatIDR, isSameDay } from "./lib/format";
 import type {
   CartItem,
   CategoryFilter,
+  HeldOrder,
   OrderType,
   PaymentMethod,
   Product,
@@ -80,6 +82,8 @@ export function usePosStore() {
     load(LS.shift, null),
   );
   const [shifts, setShifts] = useState<Shift[]>(() => load(LS.shifts, []));
+  const [heldOrders, setHeldOrders] = useState<HeldOrder[]>(() => load(LS.heldOrders, []));
+  const [heldOrdersOpen, setHeldOrdersOpen] = useState(false);
 
   // ── State UI sementara ──
   const [payOpen, setPayOpen] = useState(false);
@@ -100,6 +104,7 @@ export function usePosStore() {
   useEffect(() => save(LS.pin, pin), [pin]);
   useEffect(() => save(LS.shift, currentShift), [currentShift]);
   useEffect(() => save(LS.shifts, shifts), [shifts]);
+  useEffect(() => save(LS.heldOrders, heldOrders), [heldOrders]);
 
   // ── Sinkronisasi view ↔ hash URL (tombol back browser) ──
   useEffect(() => {
@@ -203,11 +208,59 @@ export function usePosStore() {
     pushToast(`${p?.name ?? "Item"} dihapus`, "warn");
   };
 
+  const setItemNote = (productId: string, note: string) => {
+    setCart((c) =>
+      c.map((i) => (i.productId === productId ? { ...i, note: note || undefined } : i)),
+    );
+  };
+
   const clearCart = () => {
     if (cart.length === 0) return;
     setCart([]);
     setDiscountPct(0);
     pushToast("Pesanan dikosongkan", "info");
+  };
+
+  const parkOrder = (label: string) => {
+    if (cart.length === 0) return;
+    const id = `held-${Date.now()}`;
+    const order: HeldOrder = {
+      id,
+      label: label.trim() || `Pesanan ${heldOrders.length + 1}`,
+      items: [...cart],
+      discountPct,
+      orderType,
+      table,
+      createdAt: Date.now(),
+    };
+    setHeldOrders((prev) => {
+      const next = [order, ...prev];
+      return next.length > MAX_HELD_ORDERS ? next.slice(0, MAX_HELD_ORDERS) : next;
+    });
+    setCart([]);
+    setDiscountPct(0);
+    setTable("");
+    pushToast(`Pesanan diparkir — ${label.trim() || `Pesanan ${heldOrders.length + 1}`}`, "info");
+  };
+
+  const restoreOrder = (orderId: string) => {
+    const order = heldOrders.find((o) => o.id === orderId);
+    if (!order) return;
+    if (cart.length > 0) {
+      pushToast("Kosongkan keranjang dulu sebelum restore", "warn");
+      return;
+    }
+    setCart(order.items);
+    setDiscountPct(order.discountPct);
+    setOrderType(order.orderType);
+    setTable(order.table);
+    setHeldOrders((prev) => prev.filter((o) => o.id !== orderId));
+    pushToast(`Pesanan "${order.label}" dipulihkan`, "success");
+  };
+
+  const deleteHeldOrder = (orderId: string) => {
+    setHeldOrders((prev) => prev.filter((o) => o.id !== orderId));
+    pushToast("Pesanan parkir dihapus", "warn");
   };
 
   /** Diskon di atas batas kebijakan wajib otorisasi manajer. */
@@ -310,6 +363,7 @@ export function usePosStore() {
     setPin(DEFAULT_PIN);
     setCurrentShift(null);
     setShifts([]);
+    setHeldOrders([]);
     setSettingsOpen(false);
     pushToast("Semua data direset ke awal", "info");
   };
@@ -366,7 +420,8 @@ export function usePosStore() {
     // Keranjang & pesanan
     cart, discountPct, orderType, setOrderType, table, setTable,
     qtyInCart, itemCount, totals,
-    addItem, changeQty, removeItem, clearCart, handleDiscount,
+    addItem, changeQty, removeItem, setItemNote, clearCart, handleDiscount,
+    parkOrder, restoreOrder, deleteHeldOrder,
 
     // Pembayaran & struk
     payOpen, openPayment, closePayment, confirmPayment,
@@ -387,6 +442,9 @@ export function usePosStore() {
 
     // Shift
     currentShift, shifts, shiftReady, openShift: handleOpenShift, closeShift: handleCloseShift,
+
+    // Pesanan parkir
+    heldOrders, heldOrdersOpen, setHeldOrdersOpen,
 
     // UI sementara
     drawerOpen, setDrawerOpen,
