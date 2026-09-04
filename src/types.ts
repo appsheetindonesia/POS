@@ -60,6 +60,12 @@ export interface Transaction {
   method: PaymentMethod;
   cash: number | null;
   change: number | null;
+
+  // ── Void / Refund ──
+  voided?: boolean;
+  voidedAt?: number;
+  voidedBy?: string;
+  voidReason?: string;
 }
 
 export interface Totals {
