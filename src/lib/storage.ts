@@ -10,6 +10,8 @@ export const LS = {
   stock: "senja-pos:stock",
   cashier: "senja-pos:cashier",
   pin: "senja-pos:pin",
+  shift: "senja-pos:shift",
+  shifts: "senja-pos:shifts",
 } as const;
 
 export type LSKey = (typeof LS)[keyof typeof LS];
