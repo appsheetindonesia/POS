@@ -29,6 +29,7 @@ import {
   MAX_STOCK,
 } from "./domain/policy";
 import { openShift as createShift, closeShift as finishShift, shiftDifference } from "./domain/shift";
+import { isVoided, restoredStock } from "./domain/void";
 import { needsRefreshGuard } from "./domain/leaveGuard";
 import { LS, load, removeAllData, save } from "./lib/storage";
 import { DEFAULT_VIEW, hashForView, viewFromHash } from "./lib/routes";
@@ -344,6 +345,40 @@ export function usePosStore() {
     });
 
   // ── Aksi terlindungi PIN lainnya ──────────────────────
+  const voidTransaction = (txId: string, reason: string) => {
+    const tx = transactions.find((t) => t.id === txId);
+    if (!tx || isVoided(tx)) {
+      pushToast("Transaksi tidak dapat di-void", "warn");
+      return;
+    }
+    requestPin(`Void ${tx.invoice} — ${formatIDR(tx.total)}`, () => {
+      // Restore stock
+      const restored = restoredStock(tx.lines);
+      setStockMap((m) => {
+        const next = { ...m };
+        for (const [pid, qty] of Object.entries(restored)) {
+          next[pid] = (next[pid] ?? 0) + qty;
+        }
+        return next;
+      });
+      // Mark voided
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === txId
+            ? {
+                ...t,
+                voided: true,
+                voidedAt: Date.now(),
+                voidedBy: activeCashier.id,
+                voidReason: reason,
+              }
+            : t,
+        ),
+      );
+      pushToast(`${tx.invoice} di-void — stok dikembalikan`, "warn");
+    });
+  };
+
   const clearHistory = () =>
     requestPin("Hapus semua riwayat transaksi", () => {
       setTransactions([]);
@@ -438,7 +473,7 @@ export function usePosStore() {
     clearHistory, resetAll,
 
     // Riwayat & ringkasan
-    transactions, todayTotal,
+    transactions, todayTotal, voidTransaction,
 
     // Shift
     currentShift, shifts, shiftReady, openShift: handleOpenShift, closeShift: handleCloseShift,
