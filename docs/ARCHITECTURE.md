@@ -8,22 +8,24 @@ UI presentasional di `components/`, akses data di `lib/storage.ts`.
 
 ```
 src/
- ├─ main.tsx                  bootstrap — tempat ErrorBoundary global ditambahkan nanti
+ ├─ main.tsx                  bootstrap + ErrorBoundary global
  ├─ App.tsx                   KOMPOSISI SAJA: menarik state/aksi dari usePosStore, merender view & modal
  ├─ store.ts                  SATU-SATUNYA pemilik state bisnis + UI + efek persistensi
  ├─ types.ts                  kontrak bersama (skema transaksi, View, CategoryFilter, …)
  ├─ domain/                   LOGIKA MURNI — tanpa React, tanpa storage, tanpa DOM
  │   ├─ sales.ts              rumus total (FR-05.A), buildTransaction, deductStock,
  │   │                        cartQuantities, productSalesTotals (agregasi penjualan)
- │   └─ policy.ts             SEMUA angka kebijakan (pajak, PIN, batas diskon/history/stok)
+ │   ├─ policy.ts             SEMUA angka kebijakan (pajak, PIN, batas diskon/history/stok)
+ │   └─ leaveGuard.ts         predikat penjaga muat-ulang saat transaksi berjalan
  ├─ data/products.ts          katalog statis: menu, kasir, identitas toko — bukan kebijakan
  ├─ lib/
  │   ├─ storage.ts            satu-satunya akses localStorage (kunci + load/save/reset)
+ │   ├─ routes.ts             view ↔ hash URL (#/kasir | #/stok | #/riwayat) — pure
  │   ├─ format.ts             format uang/tanggal id-ID
  │   └─ export.ts             CSV & struk PDF (jsPDF)
  └─ components/               murni presentasional — terima props, panggil callback
      Header · ProductGrid · CartPanel · PaymentModal · ReceiptModal
-     HistoryView · StockView · ManagerModals · Toast · icons
+     HistoryView · StockView · ManagerModals · Toast · icons · ErrorBoundary
 ```
 
 ## Aturan kepemilikan & arah data
@@ -67,8 +69,10 @@ src/
   menaruh logika void di komponen.
 - **Notifikasi stok & target harian (B4/B5):** derivasi di `domain/` + efek store;
   tampilan baru di components.
-- **Lazy loading (A3) & ErrorBoundary (C1):** HistoryView/StockView siap di-`React.lazy`
-  karena sudah modul terpisah; ErrorBoundary di `main.tsx` membungkus `<App/>`.
+- **Lazy loading (A3) & ErrorBoundary (C1):** SUDAH DIPASANG — HistoryView/StockView
+  lazy via `React.lazy` + `Suspense`; ErrorBoundary di `main.tsx` membungkus `<App/>`.
+  View berpindah tab kini tersinkron hash URL + tombol back browser (C2, lib/routes.ts);
+  refresh saat transaksi berjalan dilindungi beforeunload (C3, domain/leaveGuard.ts).
 
 ## Catatan sengaja (bukan dilupakan)
 
