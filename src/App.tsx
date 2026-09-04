@@ -11,6 +11,7 @@ import { formatIDR } from "./lib/format";
 import { usePosStore } from "./store";
 
 import ShiftPanel from "./components/ShiftPanel";
+import HeldOrdersDrawer from "./components/HeldOrdersDrawer";
 
 const HistoryView = lazy(() => import("./components/HistoryView"));
 const StockView = lazy(() => import("./components/StockView"));
@@ -24,7 +25,7 @@ export default function App() {
     // Keranjang & pesanan
     cart, discountPct, orderType, setOrderType, table, setTable,
     qtyInCart, itemCount, totals,
-    addItem, changeQty, removeItem, clearCart, handleDiscount,
+    addItem, changeQty, removeItem, setItemNote, clearCart, handleDiscount,
 
     // Pembayaran & struk
     payOpen, openPayment, closePayment, confirmPayment,
@@ -41,6 +42,10 @@ export default function App() {
 
     // Shift
     currentShift, shiftReady, openShift: handleOpenShift, closeShift: handleCloseShift,
+
+    // Pesanan parkir
+    heldOrders, heldOrdersOpen, setHeldOrdersOpen,
+    parkOrder, restoreOrder, deleteHeldOrder,
 
     // Riwayat & ringkasan
     transactions, todayTotal,
@@ -64,6 +69,12 @@ export default function App() {
     onOrderType: setOrderType,
     table,
     onTable: setTable,
+    onNote: setItemNote,
+    onPark: () => {
+      const label = window.prompt("Label pesanan parkir (mis. Meja 7):", table || "");
+      if (label !== null) parkOrder(label);
+    },
+    heldCount: heldOrders.length,
   };
 
   return (
@@ -226,6 +237,17 @@ export default function App() {
           notify={pushToast}
         />
       )}
+
+      <HeldOrdersDrawer
+        orders={heldOrders}
+        open={heldOrdersOpen}
+        onClose={() => setHeldOrdersOpen(false)}
+        onRestore={(id) => {
+          restoreOrder(id);
+          setHeldOrdersOpen(false);
+        }}
+        onDelete={deleteHeldOrder}
+      />
 
       <Toasts toasts={toasts} />
     </div>
