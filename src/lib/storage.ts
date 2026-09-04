@@ -12,6 +12,7 @@ export const LS = {
   pin: "senja-pos:pin",
   shift: "senja-pos:shift",
   shifts: "senja-pos:shifts",
+  heldOrders: "senja-pos:heldOrders",
 } as const;
 
 export type LSKey = (typeof LS)[keyof typeof LS];
