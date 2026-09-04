@@ -16,7 +16,8 @@ src/
  │   ├─ sales.ts              rumus total (FR-05.A), buildTransaction, deductStock,
  │   │                        cartQuantities, productSalesTotals (agregasi penjualan)
  │   ├─ policy.ts             SEMUA angka kebijakan (pajak, PIN, batas diskon/history/stok)
- │   └─ leaveGuard.ts         predikat penjaga muat-ulang saat transaksi berjalan
+ │   ├─ leaveGuard.ts         predikat penjaga muat-ulang saat transaksi berjalan
+ │   └─ shift.ts              shift logic: open, close, difference, summary
  ├─ data/products.ts          katalog statis: menu, kasir, identitas toko — bukan kebijakan
  ├─ lib/
  │   ├─ storage.ts            satu-satunya akses localStorage (kunci + load/save/reset)
@@ -26,6 +27,7 @@ src/
  └─ components/               murni presentasional — terima props, panggil callback
      Header · ProductGrid · CartPanel · PaymentModal · ReceiptModal
      HistoryView · StockView · ManagerModals · Toast · icons · ErrorBoundary
+     ShiftPanel
 ```
 
 ## Aturan kepemilikan & arah data
@@ -60,9 +62,9 @@ src/
 
 - **PostgreSQL/Supabase (A1):** ganti isi `lib/storage.ts` (atau tambah adapter paralel
   `lib/sync.ts`) — pemanggil tetap store; tambahkan antrean tulis offline di store.
-- **Shift kasir (B1):** entitas `Shift` baru (id, kasir, modalAwal, buka/tutup) hidup di
-  `store.ts` + domain murni untuk laporan selisih di `domain/shift.ts`; arahkan tombol
-  ganti kasir agar membuka/menutup shift alih-alih ganti bebas.
+- **Shift kasir (B1):** SUDAH DIPASANG — `Shift` entity di `types.ts`, logika murni
+  di `domain/shift.ts` (7 tests), state di `store.ts`, UI di `components/ShiftPanel.tsx`.
+  Transaksi ditandai `shiftId`. Tinggal laporan shift di Riwayat view.
 - **Hold order + catatan item (B2):** perluas `CartItem` (catatan opsional) & tambah state
   `heldOrders` di store; komponen baru di `components/` presentasional.
 - **Void/refund PIN (B3):** aksi di store memakai `requestPin` yang sudah ada; jangan
