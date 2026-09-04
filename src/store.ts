@@ -26,6 +26,7 @@ import {
   HISTORY_LIMIT,
   MAX_STOCK,
 } from "./domain/policy";
+import { needsRefreshGuard } from "./domain/leaveGuard";
 import { LS, load, removeAllData, save } from "./lib/storage";
 import { DEFAULT_VIEW, hashForView, viewFromHash } from "./lib/routes";
 import { formatIDR, isSameDay } from "./lib/format";
@@ -102,6 +103,24 @@ export function usePosStore() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  // ── Cegah muat-ulang tak sengaja saat transaksi berjalan (C3) ──
+  const guardActive = needsRefreshGuard({
+    cartCount: cart.length,
+    payOpen,
+    discountPct,
+    table,
+  });
+
+  useEffect(() => {
+    if (!guardActive) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [guardActive]);
 
   const pushToast = useCallback((text: string, tone: ToastTone = "success") => {
     const id = ++toastId.current;
