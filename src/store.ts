@@ -27,6 +27,7 @@ import {
   MAX_STOCK,
 } from "./domain/policy";
 import { LS, load, removeAllData, save } from "./lib/storage";
+import { DEFAULT_VIEW, hashForView, viewFromHash } from "./lib/routes";
 import { formatIDR, isSameDay } from "./lib/format";
 import type {
   CartItem,
@@ -50,7 +51,9 @@ export interface PinRequest {
 
 export function usePosStore() {
   // ── State persisten (baca sekali saat inisialisasi, tulis via efek di bawah) ──
-  const [view, setView] = useState<View>("kasir");
+  const [view, setView] = useState<View>(
+    () => viewFromHash(window.location.hash) ?? DEFAULT_VIEW,
+  );
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("Semua");
   const [cart, setCart] = useState<CartItem[]>(() => load(LS.cart, []));
@@ -87,6 +90,18 @@ export function usePosStore() {
   useEffect(() => save(LS.stock, stockMap), [stockMap]);
   useEffect(() => save(LS.cashier, cashierId), [cashierId]);
   useEffect(() => save(LS.pin, pin), [pin]);
+
+  // ── Sinkronisasi view ↔ hash URL (tombol back browser) ──
+  useEffect(() => {
+    const target = hashForView(view);
+    if (window.location.hash !== target) window.history.pushState(null, "", target);
+  }, [view]);
+
+  useEffect(() => {
+    const onPop = () => setView(viewFromHash(window.location.hash) ?? DEFAULT_VIEW);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const pushToast = useCallback((text: string, tone: ToastTone = "success") => {
     const id = ++toastId.current;
