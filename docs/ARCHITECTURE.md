@@ -17,7 +17,8 @@ src/
  │   │                        cartQuantities, productSalesTotals (agregasi penjualan)
  │   ├─ policy.ts             SEMUA angka kebijakan (pajak, PIN, batas diskon/history/stok)
  │   ├─ leaveGuard.ts         predikat penjaga muat-ulang saat transaksi berjalan
- │   └─ shift.ts              shift logic: open, close, difference, summary
+ │   ├─ shift.ts              shift logic: open, close, difference, summary
+ │   └─ holdOrders.ts         hold order summary + age formatting
  ├─ data/products.ts          katalog statis: menu, kasir, identitas toko — bukan kebijakan
  ├─ lib/
  │   ├─ storage.ts            satu-satunya akses localStorage (kunci + load/save/reset)
@@ -27,7 +28,7 @@ src/
  └─ components/               murni presentasional — terima props, panggil callback
      Header · ProductGrid · CartPanel · PaymentModal · ReceiptModal
      HistoryView · StockView · ManagerModals · Toast · icons · ErrorBoundary
-     ShiftPanel
+     ShiftPanel · HeldOrdersDrawer
 ```
 
 ## Aturan kepemilikan & arah data
@@ -65,8 +66,10 @@ src/
 - **Shift kasir (B1):** SUDAH DIPASANG — `Shift` entity di `types.ts`, logika murni
   di `domain/shift.ts` (7 tests), state di `store.ts`, UI di `components/ShiftPanel.tsx`.
   Transaksi ditandai `shiftId`. Tinggal laporan shift di Riwayat view.
-- **Hold order + catatan item (B2):** perluas `CartItem` (catatan opsional) & tambah state
-  `heldOrders` di store; komponen baru di `components/` presentasional.
+- **Hold order + catatan item (B2):** SUDAH DIPASANG — `CartItem` punya `note`,
+  `HeldOrder` entity di `types.ts`, logika di `domain/holdOrders.ts` (5 tests),
+  state di `store.ts`, UI di `CartPanel` (note input + parkir button) dan
+  `HeldOrdersDrawer.tsx`.
 - **Void/refund PIN (B3):** aksi di store memakai `requestPin` yang sudah ada; jangan
   menaruh logika void di komponen.
 - **Notifikasi stok & target harian (B4/B5):** derivasi di `domain/` + efek store;
