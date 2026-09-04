@@ -52,6 +52,7 @@ export interface NewSaleInput {
   seq: number;
   cashierId: string;
   cashierName: string;
+  shiftId?: string;
   orderType: OrderType;
   table: string; // mentah; Dine-in memakai trim(), Takeaway → null
   totals: Totals;
@@ -63,7 +64,7 @@ export interface NewSaleInput {
 
 /** Bungkus satu transaksi selesai (denormalisasi nama/harga dari katalog). */
 export function buildTransaction(input: NewSaleInput): Transaction {
-  const { cart, seq, cashierId, cashierName, orderType, table, totals, discountPct, method, cash, productMap } = input;
+  const { cart, seq, cashierId, cashierName, shiftId, orderType, table, totals, discountPct, method, cash, productMap } = input;
   const lines: SaleLine[] = cart.map((it) => {
     const p = productMap[it.productId];
     return { productId: it.productId, name: p.name, qty: it.qty, price: p.price };
@@ -73,6 +74,7 @@ export function buildTransaction(input: NewSaleInput): Transaction {
     invoice: formatInvoice(seq),
     timestamp: Date.now(),
     cashierId,
+    shiftId,
     cashier: cashierName,
     orderType,
     table: orderType === "Dine-in" ? table.trim() : null,

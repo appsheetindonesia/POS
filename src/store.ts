@@ -24,8 +24,10 @@ import {
   DEFAULT_PIN,
   DISCOUNT_APPROVAL_PCT,
   HISTORY_LIMIT,
+  SHIFT_HISTORY_LIMIT,
   MAX_STOCK,
 } from "./domain/policy";
+import { openShift as createShift, closeShift as finishShift, shiftDifference } from "./domain/shift";
 import { needsRefreshGuard } from "./domain/leaveGuard";
 import { LS, load, removeAllData, save } from "./lib/storage";
 import { DEFAULT_VIEW, hashForView, viewFromHash } from "./lib/routes";
@@ -36,6 +38,7 @@ import type {
   OrderType,
   PaymentMethod,
   Product,
+  Shift,
   ToastMsg,
   ToastTone,
   Totals,
@@ -73,6 +76,10 @@ export function usePosStore() {
     load(LS.cashier, DEFAULT_CASHIER_ID),
   );
   const [pin, setPin] = useState<string>(() => load(LS.pin, DEFAULT_PIN));
+  const [currentShift, setCurrentShift] = useState<Shift | null>(() =>
+    load(LS.shift, null),
+  );
+  const [shifts, setShifts] = useState<Shift[]>(() => load(LS.shifts, []));
 
   // ── State UI sementara ──
   const [payOpen, setPayOpen] = useState(false);
@@ -91,6 +98,8 @@ export function usePosStore() {
   useEffect(() => save(LS.stock, stockMap), [stockMap]);
   useEffect(() => save(LS.cashier, cashierId), [cashierId]);
   useEffect(() => save(LS.pin, pin), [pin]);
+  useEffect(() => save(LS.shift, currentShift), [currentShift]);
+  useEffect(() => save(LS.shifts, shifts), [shifts]);
 
   // ── Sinkronisasi view ↔ hash URL (tombol back browser) ──
   useEffect(() => {
@@ -229,6 +238,7 @@ export function usePosStore() {
       seq,
       cashierId: activeCashier.id,
       cashierName: activeCashier.name,
+      shiftId: currentShift?.id,
       orderType,
       table,
       totals,
@@ -294,6 +304,8 @@ export function usePosStore() {
     setStockMap(initialStockMap(PRODUCTS));
     setCashierId(DEFAULT_CASHIER_ID);
     setPin(DEFAULT_PIN);
+    setCurrentShift(null);
+    setShifts([]);
     setSettingsOpen(false);
     pushToast("Semua data direset ke awal", "info");
   };
@@ -309,6 +321,36 @@ export function usePosStore() {
   const selectCashier = (id: string) => {
     setCashierId(id);
     pushToast(`Kasir aktif: ${CASHIERS.find((c) => c.id === id)?.name}`, "info");
+  };
+
+  // ── Shift ──────────────────────────────────────────────
+  const shiftReady = currentShift !== null;
+
+  const handleOpenShift = (openingFloat: number) => {
+    const s = createShift({
+      id: `${Date.now()}-${cashierId}`,
+      cashierId,
+      cashierName: activeCashier.name,
+      openingFloat,
+    });
+    setCurrentShift(s);
+    pushToast(`Shift dibuka — modal ${formatIDR(openingFloat)}`, "success");
+  };
+
+  const handleCloseShift = (closingFloat: number) => {
+    if (!currentShift) return;
+    const shiftTxs = transactions.filter((t) => t.shiftId === currentShift.id);
+    const cashTxs = shiftTxs.filter((t) => t.method === "Tunai");
+    const cashTotal = cashTxs.reduce((s, t) => s + (t.cash ?? 0) - (t.change ?? 0), 0);
+    const allTotal = shiftTxs.reduce((s, t) => s + t.total, 0);
+
+    const closed = finishShift(currentShift, closingFloat, cashTotal, allTotal, shiftTxs.length);
+    setShifts((prev) => [closed, ...prev].slice(0, SHIFT_HISTORY_LIMIT));
+    setCurrentShift(null);
+
+    const diff = shiftDifference(closed);
+    const diffLabel = diff === 0 ? "Tepat" : diff > 0 ? `Surplus ${formatIDR(diff)}` : `Kurang ${formatIDR(diff)}`;
+    pushToast(`Shift ditutup — ${diffLabel}`, diff >= 0 ? "success" : "warn");
   };
 
   return {
@@ -338,6 +380,9 @@ export function usePosStore() {
 
     // Riwayat & ringkasan
     transactions, todayTotal,
+
+    // Shift
+    currentShift, shifts, shiftReady, openShift: handleOpenShift, closeShift: handleCloseShift,
 
     // UI sementara
     drawerOpen, setDrawerOpen,
