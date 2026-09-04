@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { PRODUCTS } from "../data/products";
+import { productSalesTotals } from "../domain/sales";
+import { MAX_STOCK, STOCK_LOW } from "../domain/policy";
 import { formatIDR } from "../lib/format";
 import type { Transaction } from "../types";
 import { IconAlert, IconBox, IconMinus, IconPlus, IconRefresh } from "./icons";
@@ -14,23 +16,14 @@ interface Props {
 
 export default function StockView({ stockMap, onSetStock, onRestockOne, onRestockAll, transactions }: Props) {
   /** Total terjual per produk (dari riwayat; fallback cocokkan nama untuk data lama) */
-  const soldMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const t of transactions) {
-      for (const l of t.lines) {
-        const key = l.productId ?? l.name;
-        m.set(key, (m.get(key) ?? 0) + l.qty);
-      }
-    }
-    return m;
-  }, [transactions]);
+  const soldMap = useMemo(() => productSalesTotals(transactions), [transactions]);
 
   const rows = PRODUCTS.map((p) => ({
     p,
     stock: stockMap[p.id] ?? 0,
-    sold: soldMap.get(p.id) ?? soldMap.get(p.name) ?? 0,
+    sold: soldMap.get(p.id)?.qty ?? soldMap.get(p.name)?.qty ?? 0,
   }));
-  const low = rows.filter((r) => r.stock > 0 && r.stock <= 5).length;
+  const low = rows.filter((r) => r.stock > 0 && r.stock <= STOCK_LOW).length;
   const out = rows.filter((r) => r.stock === 0).length;
 
   return (
@@ -62,7 +55,7 @@ export default function StockView({ stockMap, onSetStock, onRestockOne, onRestoc
         </span>
         <span className="flex items-center gap-2 text-sm font-semibold text-gold-deep">
           <IconAlert size={16} />
-          <b className="font-mono text-base tabular">{low}</b> menipis (≤ 5)
+          <b className="font-mono text-base tabular">{low}</b> menipis (≤ {STOCK_LOW})
         </span>
         <span className="flex items-center gap-2 text-sm font-semibold text-tomato">
           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-tomato" />
@@ -77,7 +70,7 @@ export default function StockView({ stockMap, onSetStock, onRestockOne, onRestoc
       <ul className="mt-4 flex flex-col gap-2.5">
         {rows.map(({ p, stock, sold }, i) => {
           const soldOut = stock === 0;
-          const lowStock = !soldOut && stock <= 5;
+          const lowStock = !soldOut && stock <= STOCK_LOW;
           return (
             <li
               key={p.id}
@@ -128,14 +121,14 @@ export default function StockView({ stockMap, onSetStock, onRestockOne, onRestoc
                   value={stock}
                   onChange={(e) => {
                     const n = parseInt(e.target.value.replace(/[^\d]/g, ""), 10);
-                    onSetStock(p.id, Number.isFinite(n) ? Math.min(999, n) : 0);
+                    onSetStock(p.id, Number.isFinite(n) ? Math.min(MAX_STOCK, n) : 0);
                   }}
                   inputMode="numeric"
                   className="w-12 bg-transparent text-center font-mono text-sm font-bold text-ink outline-none tabular"
                   aria-label={`Stok ${p.name}`}
                 />
                 <button
-                  onClick={() => onSetStock(p.id, Math.min(999, stock + 1))}
+                  onClick={() => onSetStock(p.id, Math.min(MAX_STOCK, stock + 1))}
                   className="grid h-8 w-8 place-items-center rounded-full text-ink/60 transition hover:bg-pine hover:text-milk active:scale-90"
                   aria-label={`Tambah stok ${p.name}`}
                 >

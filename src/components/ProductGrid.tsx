@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { CATEGORIES, CATEGORY_TINT, PRODUCTS } from "../data/products";
+import { STOCK_CRITICAL, STOCK_LOW } from "../domain/policy";
 import { formatIDR } from "../lib/format";
-import type { Category, Product } from "../types";
+import type { CategoryFilter, Product } from "../types";
 import { IconPlus, IconSearch, IconX } from "./icons";
-
-export type CategoryFilter = Category | "Semua";
 
 /** Foto menu dengan fallback emoji bila gambar gagal dimuat */
 function MenuImage({ product, dim = false }: { product: Product; dim?: boolean }) {
@@ -44,9 +43,9 @@ function MenuImage({ product, dim = false }: { product: Product; dim?: boolean }
 }
 
 const stockPillCls = (stock: number) =>
-  stock <= 2
+  stock <= STOCK_CRITICAL
     ? "bg-tomato text-milk"
-    : stock <= 5
+    : stock <= STOCK_LOW
       ? "bg-gold text-ink"
       : "bg-ink/70 text-milk/95";
 

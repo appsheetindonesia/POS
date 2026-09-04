@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { CASHIERS } from "../data/products";
+import { productSalesTotals } from "../domain/sales";
 import { downloadCsv } from "../lib/export";
 import { dateShort, formatIDR, formatIDRCompact, isSameDay, timeHM } from "../lib/format";
 import type { OrderType, Transaction } from "../types";
@@ -111,17 +112,13 @@ export default function HistoryView({ transactions, onPrint, onClear, notify }: 
     [today],
   );
 
-  const topProducts = useMemo(() => {
-    const m = new Map<string, { name: string; qty: number; revenue: number }>();
-    for (const t of transactions) {
-      for (const l of t.lines) {
-        const key = l.productId ?? l.name;
-        const cur = m.get(key) ?? { name: l.name, qty: 0, revenue: 0 };
-        m.set(key, { name: l.name, qty: cur.qty + l.qty, revenue: cur.revenue + l.qty * l.price });
-      }
-    }
-    return [...m.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
-  }, [transactions]);
+  const topProducts = useMemo(
+    () =>
+      [...productSalesTotals(transactions).values()]
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 5),
+    [transactions],
+  );
   const maxTop = topProducts[0]?.qty ?? 1;
 
   const filtered = transactions.filter(

@@ -1,5 +1,11 @@
 export type Category = "Kopi" | "Non-Kopi" | "Makanan" | "Camilan";
 
+/** Filter katalog: kategori atau semua */
+export type CategoryFilter = Category | "Semua";
+
+/** Layar utama aplikasi */
+export type View = "kasir" | "stok" | "riwayat";
+
 export interface Product {
   id: string;
   name: string;
@@ -61,8 +67,10 @@ export interface Totals {
   total: number;
 }
 
+export type ToastTone = "success" | "info" | "warn";
+
 export interface ToastMsg {
   id: number;
   text: string;
-  tone: "success" | "info" | "warn";
+  tone: ToastTone;
 }

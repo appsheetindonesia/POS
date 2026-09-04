@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PRODUCT_MAP } from "../data/products";
+import { MAX_DISCOUNT_PCT } from "../domain/policy";
 import { formatIDR } from "../lib/format";
 import type { CartItem, OrderType, Totals } from "../types";
 import {
@@ -223,7 +224,7 @@ export default function CartPanel({
                 </button>
                 <span className="w-7 text-center font-mono text-xs font-bold text-gold tabular">{discountPct}%</span>
                 <button
-                  onClick={() => onDiscountPct(Math.min(100, discountPct + 5))}
+                  onClick={() => onDiscountPct(Math.min(MAX_DISCOUNT_PCT, discountPct + 5))}
                   className="grid h-5 w-5 place-items-center rounded-full text-milk/60 transition hover:bg-gold hover:text-ink"
                   aria-label="Tambah diskon"
                 >

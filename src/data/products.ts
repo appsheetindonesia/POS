@@ -79,9 +79,6 @@ export const CASHIERS: Cashier[] = [
   { id: "citra", name: "Citra", color: "#F0A48E" },
 ];
 
-export const DEFAULT_PIN = "2468";
-
-export const TAX_RATE = 0.1; // PPN 10%
 export const STORE = {
   name: "Kopi Senja",
   address: "Jl. Purnama No. 12, Yogyakarta",

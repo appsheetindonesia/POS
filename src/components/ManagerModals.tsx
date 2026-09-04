@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_PIN } from "../data/products";
+import { DEFAULT_PIN } from "../domain/policy";
 import { IconAlert, IconBackspace, IconCheck, IconLock, IconX } from "./icons";
 
 /* ─────────────────────────────────────────────────────────

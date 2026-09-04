@@ -1,6 +1,6 @@
 import { useState, type ComponentType } from "react";
 import { formatIDRCompact } from "../lib/format";
-import type { Cashier } from "../types";
+import type { Cashier, View } from "../types";
 import {
   IconBox,
   IconCheck,
@@ -10,8 +10,6 @@ import {
   IconSettings,
   LogoCup,
 } from "./icons";
-
-export type View = "kasir" | "stok" | "riwayat";
 
 const TABS: { id: View; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { id: "kasir", label: "Kasir", icon: IconRegister },
