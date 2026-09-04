@@ -1,15 +1,17 @@
+import { lazy, Suspense } from "react";
 import CartPanel from "./components/CartPanel";
 import Header from "./components/Header";
-import HistoryView from "./components/HistoryView";
 import { PinModal, SettingsModal } from "./components/ManagerModals";
 import PaymentModal from "./components/PaymentModal";
 import ProductGrid from "./components/ProductGrid";
 import ReceiptModal from "./components/ReceiptModal";
-import StockView from "./components/StockView";
 import Toasts from "./components/Toast";
 import { IconCart, IconX } from "./components/icons";
 import { formatIDR } from "./lib/format";
 import { usePosStore } from "./store";
+
+const HistoryView = lazy(() => import("./components/HistoryView"));
+const StockView = lazy(() => import("./components/StockView"));
 
 export default function App() {
   const {
@@ -90,24 +92,28 @@ export default function App() {
 
       {view === "stok" && (
         <main className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col overflow-hidden px-4 py-5 lg:px-6">
-          <StockView
-            stockMap={stockMap}
-            onSetStock={setStock}
-            onRestockOne={restockOne}
-            onRestockAll={restockAll}
-            transactions={transactions}
-          />
+          <Suspense fallback={<ViewLoading />}>
+            <StockView
+              stockMap={stockMap}
+              onSetStock={setStock}
+              onRestockOne={restockOne}
+              onRestockAll={restockAll}
+              transactions={transactions}
+            />
+          </Suspense>
         </main>
       )}
 
       {view === "riwayat" && (
         <main className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col overflow-hidden px-4 py-5 lg:px-6">
-          <HistoryView
-            transactions={transactions}
-            onPrint={openReceiptFromHistory}
-            onClear={clearHistory}
-            notify={pushToast}
-          />
+          <Suspense fallback={<ViewLoading />}>
+            <HistoryView
+              transactions={transactions}
+              onPrint={openReceiptFromHistory}
+              onClear={clearHistory}
+              notify={pushToast}
+            />
+          </Suspense>
         </main>
       )}
 
@@ -195,6 +201,18 @@ export default function App() {
       )}
 
       <Toasts toasts={toasts} />
+    </div>
+  );
+}
+
+function ViewLoading() {
+  return (
+    <div className="grid min-h-0 flex-1 place-items-center" role="status">
+      <span
+        className="h-10 w-10 animate-spin rounded-full border-4 border-pine/15 border-t-pine"
+        aria-hidden
+      />
+      <span className="sr-only">Memuat…</span>
     </div>
   );
 }
