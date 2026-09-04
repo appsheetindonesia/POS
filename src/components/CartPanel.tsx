@@ -26,6 +26,9 @@ interface Props {
   onOrderType: (t: OrderType) => void;
   table: string;
   onTable: (t: string) => void;
+  onNote?: (productId: string, note: string) => void;
+  onPark?: () => void;
+  heldCount?: number;
 }
 
 /** Thumbnail foto di daftar pesanan, fallback emoji bila gagal dimuat */
@@ -62,6 +65,9 @@ export default function CartPanel({
   onOrderType,
   table,
   onTable,
+  onNote,
+  onPark,
+  heldCount,
 }: Props) {
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
   const empty = items.length === 0;
@@ -79,14 +85,30 @@ export default function CartPanel({
             {itemCount}
           </span>
         </div>
-        <button
-          onClick={onClear}
-          disabled={empty}
-          className="flex items-center gap-1.5 rounded-full border border-milk/15 px-3 py-1.5 text-xs font-semibold text-milk/60 transition enabled:hover:border-tomato/60 enabled:hover:bg-tomato/15 enabled:hover:text-milk disabled:opacity-30"
-        >
-          <IconBroom size={13} />
-          Kosongkan
-        </button>
+        <div className="flex items-center gap-2">
+          {onPark && (
+            <button
+              onClick={onPark}
+              disabled={empty}
+              className="flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-3 py-1.5 text-xs font-semibold text-gold transition enabled:hover:bg-gold/25 disabled:opacity-30"
+            >
+              🅿️ Parkir
+              {heldCount != null && heldCount > 0 && (
+                <span className="grid h-4 min-w-4 place-items-center rounded-full bg-gold/80 px-1 font-mono text-[9px] font-bold text-ink">
+                  {heldCount}
+                </span>
+              )}
+            </button>
+          )}
+          <button
+            onClick={onClear}
+            disabled={empty}
+            className="flex items-center gap-1.5 rounded-full border border-milk/15 px-3 py-1.5 text-xs font-semibold text-milk/60 transition enabled:hover:border-tomato/60 enabled:hover:bg-tomato/15 enabled:hover:text-milk disabled:opacity-30"
+          >
+            <IconBroom size={13} />
+            Kosongkan
+          </button>
+        </div>
       </div>
 
       {/* Tipe pesanan */}
@@ -154,7 +176,14 @@ export default function CartPanel({
                     <CartThumb image={p.image} emoji={p.emoji} name={p.name} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="truncate text-sm font-bold leading-snug">{p.name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold leading-snug">{p.name}</p>
+                          {it.note && (
+                            <p className="mt-0.5 text-[11px] italic text-gold/70">
+                              📝 {it.note}
+                            </p>
+                          )}
+                        </div>
                         <button
                           onClick={() => onRemove(it.productId)}
                           className="shrink-0 rounded-md p-1 text-milk/35 transition hover:bg-tomato/25 hover:text-tomato"
@@ -166,6 +195,19 @@ export default function CartPanel({
                       <p className="mt-0.5 font-mono text-[11px] text-milk/45 tabular">
                         @ {formatIDR(p.price)}
                       </p>
+                      {onNote && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <span className="text-[10px] text-milk/40">📝</span>
+                          <input
+                            type="text"
+                            value={it.note ?? ""}
+                            onChange={(e) => onNote(it.productId, e.target.value)}
+                            placeholder="Catatan (mis. kurang gula)"
+                            maxLength={50}
+                            className="flex-1 rounded-lg border border-milk/10 bg-ink/20 px-2 py-1 text-[11px] text-milk/80 placeholder:text-milk/25 outline-none transition focus:border-gold/40"
+                          />
+                        </div>
+                      )}
 
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex items-center gap-1 rounded-full border border-milk/12 bg-ink/30 p-0.5">
