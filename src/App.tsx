@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import CartPanel from "./components/CartPanel";
 import Header from "./components/Header";
 import { PinModal, SettingsModal } from "./components/ManagerModals";
@@ -9,9 +9,11 @@ import Toasts from "./components/Toast";
 import { IconCart, IconX } from "./components/icons";
 import { formatIDR } from "./lib/format";
 import { usePosStore } from "./store";
+import type { Transaction } from "./types";
 
 import ShiftPanel from "./components/ShiftPanel";
 import HeldOrdersDrawer from "./components/HeldOrdersDrawer";
+import VoidModal from "./components/VoidModal";
 
 const HistoryView = lazy(() => import("./components/HistoryView"));
 const StockView = lazy(() => import("./components/StockView"));
@@ -48,13 +50,15 @@ export default function App() {
     parkOrder, restoreOrder, deleteHeldOrder,
 
     // Riwayat & ringkasan
-    transactions, todayTotal,
+    transactions, todayTotal, voidTransaction,
 
     // UI sementara
     drawerOpen, setDrawerOpen,
     settingsOpen, setSettingsOpen,
     toasts, pushToast,
   } = usePosStore();
+
+  const [voidTx, setVoidTx] = useState<Transaction | null>(null);
 
   const cartPanelProps = {
     items: cart,
@@ -149,6 +153,7 @@ export default function App() {
               transactions={transactions}
               onPrint={openReceiptFromHistory}
               onClear={clearHistory}
+              onVoid={(tx) => setVoidTx(tx)}
               notify={pushToast}
             />
           </Suspense>
@@ -235,6 +240,17 @@ export default function App() {
           onResetAll={() => requestPin("Reset semua data", resetAll)}
           onClose={() => setSettingsOpen(false)}
           notify={pushToast}
+        />
+      )}
+
+      {voidTx && (
+        <VoidModal
+          tx={voidTx}
+          onConfirm={(reason) => {
+            voidTransaction(voidTx.id, reason);
+            setVoidTx(null);
+          }}
+          onClose={() => setVoidTx(null)}
         />
       )}
 
