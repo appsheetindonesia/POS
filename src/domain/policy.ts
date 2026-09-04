@@ -35,3 +35,6 @@ export const MAX_STOCK = 999;
 
 /** Kasir bawaan saat aplikasi pertama dibuka */
 export const DEFAULT_CASHIER_ID = "ayu";
+
+/** Jumlah shift yang disimpan di riwayat (FIFO) */
+export const SHIFT_HISTORY_LIMIT = 50;

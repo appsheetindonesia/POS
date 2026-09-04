@@ -45,6 +45,7 @@ export interface Transaction {
   invoice: string;
   timestamp: number;
   cashierId?: string;
+  shiftId?: string;
   cashier: string;
   orderType?: OrderType;
   table?: string | null;
@@ -73,4 +74,20 @@ export interface ToastMsg {
   id: number;
   text: string;
   tone: ToastTone;
+}
+
+export interface Shift {
+  id: string;
+  cashierId: string;
+  cashierName: string;
+  openedAt: number;
+  closedAt: number | null;
+  openingFloat: number;
+  closingFloat: number | null;
+  /** Total dari transaksi Tunai saja selama shift ini */
+  cashTotal: number;
+  /** Total dari semua metode (Tunai + QRIS + Debit) */
+  allTotal: number;
+  /** Jumlah transaksi */
+  txCount: number;
 }
