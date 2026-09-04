@@ -18,7 +18,8 @@ src/
  │   ├─ policy.ts             SEMUA angka kebijakan (pajak, PIN, batas diskon/history/stok)
  │   ├─ leaveGuard.ts         predikat penjaga muat-ulang saat transaksi berjalan
  │   ├─ shift.ts              shift logic: open, close, difference, summary
- │   └─ holdOrders.ts         hold order summary + age formatting
+ │   ├─ holdOrders.ts         hold order summary + age formatting
+ │   └─ void.ts               void/refund logic: isVoided, restoredStock, formatVoidLabel
  ├─ data/products.ts          katalog statis: menu, kasir, identitas toko — bukan kebijakan
  ├─ lib/
  │   ├─ storage.ts            satu-satunya akses localStorage (kunci + load/save/reset)
@@ -28,7 +29,7 @@ src/
  └─ components/               murni presentasional — terima props, panggil callback
      Header · ProductGrid · CartPanel · PaymentModal · ReceiptModal
      HistoryView · StockView · ManagerModals · Toast · icons · ErrorBoundary
-     ShiftPanel · HeldOrdersDrawer
+     ShiftPanel · HeldOrdersDrawer · VoidModal
 ```
 
 ## Aturan kepemilikan & arah data
@@ -70,8 +71,9 @@ src/
   `HeldOrder` entity di `types.ts`, logika di `domain/holdOrders.ts` (5 tests),
   state di `store.ts`, UI di `CartPanel` (note input + parkir button) dan
   `HeldOrdersDrawer.tsx`.
-- **Void/refund PIN (B3):** aksi di store memakai `requestPin` yang sudah ada; jangan
-  menaruh logika void di komponen.
+- **Void/refund PIN (B3):** SUDAH DIPASANG — Transaction punya `voided`/`voidedAt`/`voidedBy`/`voidReason`,
+  logika di `domain/void.ts` (8 tests), aksi `voidTransaction` di `store.ts` dengan PIN gate,
+  UI di `VoidModal.tsx` + tombol void di `HistoryView`.
 - **Notifikasi stok & target harian (B4/B5):** derivasi di `domain/` + efek store;
   tampilan baru di components.
 - **Lazy loading (A3) & ErrorBoundary (C1):** SUDAH DIPASANG — HistoryView/StockView
