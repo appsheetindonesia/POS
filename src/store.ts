@@ -159,6 +159,10 @@ export function usePosStore() {
   );
 
   const addItem = (p: Product) => {
+    if (!currentShift) {
+      pushToast("Buka shift dulu sebelum berjualan", "warn");
+      return;
+    }
     const stock = stockMap[p.id] ?? 0;
     if (stock <= 0) {
       pushToast(`Stok ${p.name} habis`, "warn");

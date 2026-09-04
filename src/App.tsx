@@ -10,6 +10,8 @@ import { IconCart, IconX } from "./components/icons";
 import { formatIDR } from "./lib/format";
 import { usePosStore } from "./store";
 
+import ShiftPanel from "./components/ShiftPanel";
+
 const HistoryView = lazy(() => import("./components/HistoryView"));
 const StockView = lazy(() => import("./components/StockView"));
 
@@ -36,6 +38,9 @@ export default function App() {
     cashiers, cashierId, selectCashier,
     pin, setPin, pinReq, requestPin, closePin,
     clearHistory, resetAll,
+
+    // Shift
+    currentShift, shiftReady, openShift: handleOpenShift, closeShift: handleCloseShift,
 
     // Riwayat & ringkasan
     transactions, todayTotal,
@@ -71,6 +76,28 @@ export default function App() {
         onCashier={selectCashier}
         todayTotal={todayTotal}
         onSettings={() => setSettingsOpen(true)}
+        shiftStatus={
+          currentShift ? (
+            <div className="flex items-center gap-2 rounded-full border border-pine/30 bg-pine/8 px-3 py-1.5 text-xs text-pine">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pine opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-pine" />
+              </span>
+              <span className="font-semibold">{currentShift.cashierName}</span>
+              <span className="text-ink/40">·</span>
+              <span className="font-mono font-bold tabular">{formatIDR(currentShift.openingFloat)}</span>
+              <span className="text-ink/40">·</span>
+              <span>{currentShift.txCount} tx</span>
+            </div>
+          ) : undefined
+        }
+      />
+
+      {/* Shift overlay */}
+      <ShiftPanel
+        shift={currentShift}
+        onOpen={handleOpenShift}
+        onClose={handleCloseShift}
       />
 
       {view === "kasir" && (

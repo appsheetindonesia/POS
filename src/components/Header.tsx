@@ -25,9 +25,10 @@ interface Props {
   onCashier: (id: string) => void;
   todayTotal: number;
   onSettings: () => void;
+  shiftStatus?: React.ReactNode;
 }
 
-export default function Header({ view, onView, cashiers, cashierId, onCashier, todayTotal, onSettings }: Props) {
+export default function Header({ view, onView, cashiers, cashierId, onCashier, todayTotal, onSettings, shiftStatus }: Props) {
   const [open, setOpen] = useState(false);
   const cashier = cashiers.find((c) => c.id === cashierId) ?? cashiers[0];
   const todayLabel = new Date().toLocaleDateString("id-ID", {
@@ -51,6 +52,9 @@ export default function Header({ view, onView, cashiers, cashierId, onCashier, t
             </p>
           </div>
         </div>
+
+        {/* Status shift */}
+        {shiftStatus}
 
         {/* Navigasi */}
         <nav className="order-3 w-full sm:order-none sm:mx-auto sm:w-auto" aria-label="Navigasi utama">
