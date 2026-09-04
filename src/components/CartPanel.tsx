@@ -66,7 +66,7 @@ export default function CartPanel({
   const empty = items.length === 0;
 
   return (
-    <div className="panel-texture flex h-full min-h-0 flex-col rounded-none bg-pine-deep text-milk lg:rounded-3xl lg:border lg:border-ink/30 lg:shadow-deep">
+    <div className="panel-texture flex h-full min-h-0 flex-col rounded-none bg-pine-deep text-milk lg:rounded-panel lg:border lg:border-ink/30 lg:shadow-deep">
       {/* Head */}
       <div className="flex items-center justify-between border-b border-milk/10 px-5 py-4">
         <div className="flex items-center gap-2.5">
@@ -147,7 +147,7 @@ export default function CartPanel({
               return (
                 <li
                   key={it.productId}
-                  className="group animate-drop rounded-2xl border border-milk/8 bg-ink/25 p-3 transition-colors hover:border-milk/20 hover:bg-ink/40"
+                  className="group animate-drop rounded-stamp border border-milk/8 bg-ink/25 p-3 transition-colors hover:border-milk/20 hover:bg-ink/40"
                 >
                   <div className="flex items-start gap-3">
                     <CartThumb image={p.image} emoji={p.emoji} name={p.name} />
@@ -253,7 +253,7 @@ export default function CartPanel({
         <button
           onClick={onPay}
           disabled={empty}
-          className="group mt-4 flex w-full items-center justify-between rounded-2xl bg-gold px-5 py-3.5 font-bold text-ink shadow-lift transition-all duration-200 enabled:hover:bg-[#f7b644] enabled:hover:shadow-deep enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
+          className="group mt-4 flex w-full items-center justify-between rounded-stamp bg-gold px-5 py-3.5 font-bold text-ink shadow-lift transition-all duration-200 enabled:hover:bg-[#f7b644] enabled:hover:shadow-deep enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
         >
           <span className="flex items-center gap-2">
             Bayar
