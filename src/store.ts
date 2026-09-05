@@ -9,7 +9,7 @@
  *             → state baru → komponen (derivasi via useMemo).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CASHIERS, PRODUCTS, PRODUCT_MAP } from "./data/products";
+import { CASHIERS, INGREDIENTS, PRODUCTS, PRODUCT_MAP } from "./data/products";
 import {
   buildTransaction,
   cartQuantities,
@@ -25,12 +25,19 @@ import {
   DELETION_LOG_LIMIT,
   DISCOUNT_APPROVAL_PCT,
   HISTORY_LIMIT,
+  INGREDIENT_RESTOCK_DEFAULT,
   SHIFT_HISTORY_LIMIT,
   MAX_HELD_ORDERS,
   MAX_STOCK,
 } from "./domain/policy";
 import { openShift as createShift, closeShift as finishShift, shiftDifference } from "./domain/shift";
 import { isVoided, restoredStock } from "./domain/void";
+import {
+  computeEffectiveStockMap,
+  deductIngredients,
+  ingredientsForCart,
+  restoredIngredients,
+} from "./domain/recipe";
 import { needsRefreshGuard } from "./domain/leaveGuard";
 import {
   buildFlushOps,
@@ -47,6 +54,7 @@ import type {
   CartItem,
   CategoryFilter,
   HeldOrder,
+  Ingredient,
   OrderType,
   PaymentMethod,
   Product,
@@ -99,6 +107,13 @@ export function usePosStore() {
   const [stockStamp, setStockStamp] = useState<Record<string, number>>(() =>
     load(LS.stockStamp, {}),
   );
+  const [ingredientMap, setIngredientMap] = useState<Record<string, Ingredient>>(() => {
+    const saved = load(LS.ingredients, [] as Ingredient[]);
+    // Bahan dari katalog sebagai fallback untuk id yang belum tersimpan
+    const base = Object.fromEntries(INGREDIENTS.map((i) => [i.id, i]));
+    for (const i of saved) base[i.id] = i;
+    return base;
+  });
   const [dbConfig, setDbConfig] = useState<DbConfig>(() => load(LS.dbConfig, EMPTY_DB_CONFIG));
   const [dbStatus, setDbStatus] = useState<DbStatus>({
     source: "none",
@@ -132,6 +147,10 @@ export function usePosStore() {
   useEffect(() => save(LS.syncQueue, syncQueue), [syncQueue]);
   useEffect(() => save(LS.deletions, deletions), [deletions]);
   useEffect(() => save(LS.stockStamp, stockStamp), [stockStamp]);
+  useEffect(
+    () => save(LS.ingredients, Object.values(ingredientMap)),
+    [ingredientMap],
+  );
 
   // ── Sinkronisasi view ↔ hash URL (tombol back browser) ──
   useEffect(() => {
@@ -205,6 +224,56 @@ export function usePosStore() {
     [enqueueSync],
   );
 
+  /** Tulis bahan (qty baru eksplisit per id) + stamp LWW + antrian sync. */
+  const writeIngredients = useCallback(
+    (qtyById: Record<string, number>) => {
+      const stamp = Date.now();
+      setIngredientMap((m) => {
+        const next = { ...m };
+        const ids: string[] = [];
+        for (const [id, qty] of Object.entries(qtyById)) {
+          const cur = m[id];
+          if (!cur) continue;
+          next[id] = { ...cur, qty: Math.max(0, qty), updatedAt: stamp };
+          ids.push(id);
+        }
+        enqueueSync(ids.map((id) => ({ kind: "upsert" as const, entity: "ingredients" as const, key: id })));
+        return next;
+      });
+    },
+    [enqueueSync],
+  );
+
+  /** Set qty satu bahan secara manual (input langsung di tab Stok). */
+  const setIngredientQty = useCallback(
+    (id: string, value: number) => writeIngredients({ [id]: Math.max(0, value) }),
+    [writeIngredients],
+  );
+
+  /** Restock satu bahan: tambah qty default di atas sisa yang ada. */
+  const restockIngredient = useCallback(
+    (id: string) => {
+      writeIngredients({ [id]: (ingredientMap[id]?.qty ?? 0) + INGREDIENT_RESTOCK_DEFAULT });
+      const name = ingredientMap[id]?.name ?? id;
+      pushToast(`${name} +${INGREDIENT_RESTOCK_DEFAULT}`, "success");
+    },
+    [writeIngredients, ingredientMap, pushToast],
+  );
+
+  /** Restock SEMUA bahan ke stok awal katalog (dilindungi PIN di UI). */
+  const restockAllIngredients = useCallback(() => {
+    const stamp = Date.now();
+    setIngredientMap((m) => {
+      const next = { ...m };
+      for (const b of INGREDIENTS) {
+        next[b.id] = { ...(m[b.id] ?? b), qty: b.qty, updatedAt: stamp };
+      }
+      enqueueSync(INGREDIENTS.map((b) => ({ kind: "upsert" as const, entity: "ingredients" as const, key: b.id })));
+      return next;
+    });
+    pushToast("Semua bahan diisi ulang ke stok awal", "success");
+  }, [enqueueSync, pushToast]);
+
   const activeCashier = useMemo(
     () => CASHIERS.find((c) => c.id === cashierId) ?? CASHIERS[0],
     [cashierId],
@@ -221,6 +290,16 @@ export function usePosStore() {
   const qtyInCart = useMemo(() => cartQuantities(cart), [cart]);
   const itemCount = useMemo(() => countItems(cart), [cart]);
 
+  // Stok efektif: menu ber-resep diturunkan dari bahan; tanpa resep → stok langsung.
+  const ingredientQtyMap = useMemo(
+    () => Object.fromEntries(Object.values(ingredientMap).map((i) => [i.id, i.qty])),
+    [ingredientMap],
+  );
+  const effectiveStockMap = useMemo(
+    () => computeEffectiveStockMap(PRODUCTS, ingredientQtyMap),
+    [ingredientQtyMap],
+  );
+
   const totals: Totals = useMemo(
     () => computeTotals(cart, discountPct, PRODUCT_MAP),
     [cart, discountPct],
@@ -231,7 +310,7 @@ export function usePosStore() {
       pushToast("Buka shift dulu sebelum berjualan", "warn");
       return;
     }
-    const stock = stockMap[p.id] ?? 0;
+    const stock = effectiveStockMap[p.id] ?? 0;
     if (stock <= 0) {
       pushToast(`Stok ${p.name} habis`, "warn");
       return;
@@ -251,7 +330,7 @@ export function usePosStore() {
 
   const changeQty = (productId: string, delta: number) => {
     if (delta > 0) {
-      const stock = stockMap[productId] ?? 0;
+      const stock = effectiveStockMap[productId] ?? 0;
       const cur = qtyInCart[productId] ?? 0;
       if (cur + delta > stock) {
         pushToast(`Stok tinggal ${stock}`, "warn");
@@ -373,8 +452,20 @@ export function usePosStore() {
       productMap: PRODUCT_MAP,
     });
 
-    // Kurangi stok sesuai yang terjual (bertanda LWW + antrian sync)
-    writeStock((m) => deductStock(m, cart), cart.map((i) => i.productId));
+    // Potong bahan sesuai resep (menu ber-resep) — sumber kebenaran stok.
+    const need = ingredientsForCart(cart, PRODUCT_MAP);
+    if (Object.keys(need).length > 0) {
+      const qtyById: Record<string, number> = {};
+      for (const [id, used] of Object.entries(need)) {
+        qtyById[id] = (ingredientMap[id]?.qty ?? 0) - used;
+      }
+      writeIngredients(qtyById);
+    }
+    // Menu tanpa resep tetap pakai stok langsung (legacy)
+    const noRecipeItems = cart.filter((i) => !PRODUCT_MAP[i.productId]?.recipe);
+    if (noRecipeItems.length > 0) {
+      writeStock((m) => deductStock(m, noRecipeItems), noRecipeItems.map((i) => i.productId));
+    }
 
     setTransactions((t) => [tx, ...t].slice(0, HISTORY_LIMIT));
     enqueueSync([{ kind: "upsert", entity: "transactions", key: tx.id }]);
@@ -402,6 +493,20 @@ export function usePosStore() {
 
   const restockOne = (id: string) => {
     const p = PRODUCT_MAP[id];
+    if (p.recipe) {
+      // Menu ber-resep: restock = isi ulang seluruh bahan resepnya
+      const qtyById: Record<string, number> = {};
+      for (const l of p.recipe) {
+        const base = INGREDIENTS.find((b) => b.id === l.ingredientId);
+        qtyById[l.ingredientId] = Math.max(
+          ingredientMap[l.ingredientId]?.qty ?? 0,
+          base?.qty ?? 0,
+        );
+      }
+      writeIngredients(qtyById);
+      pushToast(`Bahan ${p.name} diisi ulang`, "success");
+      return;
+    }
     setStock(id, p.stock);
     pushToast(`Stok ${p.name} → ${p.stock}`, "info");
   };
@@ -421,18 +526,30 @@ export function usePosStore() {
       return;
     }
     requestPin(`Void ${tx.invoice} — ${formatIDR(tx.total)}`, () => {
-      // Restore stock (bertanda LWW + antrian sync)
-      const restored = restoredStock(tx.lines);
-      writeStock(
-        (m) => {
-          const next = { ...m };
+      // Kembalikan bahan sesuai resep (void)
+      const ingBack = restoredIngredients(tx.lines, PRODUCT_MAP);
+      if (Object.keys(ingBack).length > 0) {
+        const qtyById: Record<string, number> = {};
+        for (const [id, back] of Object.entries(ingBack)) {
+          qtyById[id] = (ingredientMap[id]?.qty ?? 0) + back;
+        }
+        writeIngredients(qtyById);
+      }
+      // Menu tanpa resep: kembalikan stok langsung (legacy)
+      const legacyLines = tx.lines.filter((l) => l.productId && !PRODUCT_MAP[l.productId!]?.recipe);
+      const restored = restoredStock(legacyLines);
+      if (Object.keys(restored).length > 0) {
+        writeStock(
+          (m) => {
+            const next = { ...m };
           for (const [pid, qty] of Object.entries(restored)) {
-            next[pid] = (next[pid] ?? 0) + qty;
+            next[pid] = (next[pid] ?? 0) + (qty as number);
           }
-          return next;
-        },
-        Object.keys(restored),
-      );
+            return next;
+          },
+          Object.keys(restored),
+        );
+      }
       // Mark voided (stamp LWW naik agar menang merge)
       setTransactions((prev) =>
         prev.map((t) =>
@@ -479,6 +596,7 @@ export function usePosStore() {
     setTable("");
     setStockMap(initialStockMap(PRODUCTS));
     setStockStamp({});
+    setIngredientMap(Object.fromEntries(INGREDIENTS.map((i) => [i.id, i])));
     setCashierId(DEFAULT_CASHIER_ID);
     setPin(DEFAULT_PIN);
     setCurrentShift(null);
@@ -540,8 +658,8 @@ export function usePosStore() {
   // ── Database PostgreSQL ────────────────────────────────
   // Ref ke state sync terkini — aksi async & efek membaca versi terbaru
   // tanpa masalah stale-closure.
-  const syncStateRef = useRef({ transactions, shifts, heldOrders, stockMap, stockStamp, deletions });
-  syncStateRef.current = { transactions, shifts, heldOrders, stockMap, stockStamp, deletions };
+  const syncStateRef = useRef({ transactions, shifts, heldOrders, stockMap, stockStamp, deletions, ingredients: Object.values(ingredientMap) });
+  syncStateRef.current = { transactions, shifts, heldOrders, stockMap, stockStamp, deletions, ingredients: Object.values(ingredientMap) };
   const seqRef = useRef(seq);
   seqRef.current = seq;
   const queueRef = useRef(syncQueue);
@@ -555,6 +673,13 @@ export function usePosStore() {
     setHeldOrders(r.heldOrders);
     setStockMap(r.stockMap);
     setStockStamp(r.stockStamp);
+    if (r.ingredients && r.ingredients.length > 0) {
+      setIngredientMap((m) => {
+        const next = { ...m };
+        for (const i of r.ingredients!) next[i.id] = i;
+        return next;
+      });
+    }
     setDeletions((cur) => (cur.length === r.deletions.length ? cur : r.deletions));
     if (r.seq > seqRef.current) setSeq(r.seq);
   }, []);
@@ -735,8 +860,10 @@ export function usePosStore() {
     receiptTx, receiptFromHistory, openReceiptFromHistory, closeReceipt,
     nextInvoice,
 
-    // Stok
-    stockMap, setStock, restockOne, restockAll,
+    // Stok & bahan baku
+    stockMap: effectiveStockMap, setStock, restockOne, restockAll,
+    ingredientMap: Object.values(ingredientMap), setIngredientQty,
+    restockIngredient, restockAllIngredients,
 
     // Kasir, PIN & zona berbahaya
     cashiers: CASHIERS, cashierId, activeCashier, selectCashier,
