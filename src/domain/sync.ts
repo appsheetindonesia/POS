@@ -13,6 +13,7 @@
  * Semua fungsi murni (deterministik, tanpa I/O) sehingga teruji vitest langsung.
  */
 import type { HeldOrder, Shift, Transaction } from "../types";
+import { DELETION_LOG_LIMIT, SYNC_QUEUE_LIMIT } from "./policy";
 
 /** Entitas yang disinkronkan. `meta` = pasangan key/value tunggal (seq). */
 export type SyncEntity = "transactions" | "shifts" | "heldOrders" | "stock" | "meta";
@@ -40,6 +41,9 @@ export interface SyncLocalState {
   stockMap: Record<string, number>;
   /** productId → stamp epoch ms; tidak ada entri = belum pernah ditulis lokal */
   stockStamp: Record<string, number>;
+  /** Tombstone lokal — melindungi pull dari menghidupkan kembali data yang
+   *  sudah dihapus lokal tetapi belum sampai ke server (antrian belum flush). */
+  deletions?: Deletion[];
 }
 
 export interface Deletion {
@@ -67,8 +71,6 @@ export interface MergeResult extends SyncLocalState {
   /** max(localSeq, remote.seq) — nomor nota tidak pernah mundur */
   seq: number;
 }
-
-export const SYNC_QUEUE_LIMIT = 200;
 
 /**
  * Satukan antrian: hanya op TERAKHIR per (entity, key) yang tersisa.
@@ -143,6 +145,16 @@ export function mergeServerData(
   localSeq = 1,
 ): MergeResult {
   type stamped = { id: string; updatedAt?: number };
+  // Tombstone gabungan lokal+remote: untuk (entity,key) sama, yang lebih baru menang.
+  const combined = new Map<string, Deletion>();
+  for (const d of [...(local.deletions ?? []), ...remote.deletions]) {
+    const k = `${d.entity}:${d.key}`;
+    const cur = combined.get(k);
+    if (!cur || d.deletedAt > cur.deletedAt) combined.set(k, d);
+  }
+  const deletions: Deletion[] = [...combined.values()]
+    .sort((a, b) => b.deletedAt - a.deletedAt)
+    .slice(0, DELETION_LOG_LIMIT);
   // Pakai referensi asli; array hanya disalin bila benar-benar berubah —
   // bila merge tanpa dampak, pemanggil (store) bisa melewati penulisan ulang.
   const arrays: Record<"transactions" | "shifts" | "heldOrders", stamped[]> = {
@@ -157,7 +169,6 @@ export function mergeServerData(
   };
   const stockMap = { ...local.stockMap };
   const stockStamp = { ...local.stockStamp };
-  const deletions: Deletion[] = [...remote.deletions];
   let removedCount = 0;
 
   const remotes = {
@@ -203,7 +214,7 @@ export function mergeServerData(
     }
   }
 
-  // Tombstone: entitas lokal dengan stamp ≤ deletedAt ikut terhapus
+  // Tombstone (lokal+remote): entitas dengan stamp ≤ deletedAt ikut terhapus
   for (const entity of ["transactions", "shifts", "heldOrders"] as const) {
     for (const d of deletions) {
       if (d.entity !== entity) continue;
