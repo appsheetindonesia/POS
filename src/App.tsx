@@ -58,7 +58,7 @@ export default function App() {
     toasts, pushToast,
 
     // Database PostgreSQL
-    dbConfig, dbStatus, dbBusy,
+    dbConfig, dbStatus, dbBusy, pendingSyncCount,
     testDbConnection, saveDbConfig, syncNow, pullFromServer,
   } = usePosStore();
 
@@ -247,6 +247,7 @@ export default function App() {
           dbConfig={dbConfig}
           dbStatus={dbStatus}
           dbBusy={dbBusy}
+          pendingSyncCount={pendingSyncCount}
           onTest={testDbConnection}
           onSave={saveDbConfig}
           onSyncNow={syncNow}

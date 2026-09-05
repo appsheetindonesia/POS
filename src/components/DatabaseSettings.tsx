@@ -13,6 +13,8 @@ interface Props {
   dbConfig: DbConfig;
   dbStatus: DbStatus;
   dbBusy: boolean;
+  /** Jumlah tulisan offline yang menunggu dikirim ke server */
+  pendingSyncCount?: number;
   onTest: (cfg: DbConfig) => Promise<{ ok: boolean; message: string; latencyMs: number } | null>;
   onSave: (cfg: DbConfig) => Promise<void>;
   onSyncNow: () => Promise<void>;
@@ -26,6 +28,7 @@ export default function DatabaseSettings({
   dbConfig,
   dbStatus,
   dbBusy,
+  pendingSyncCount = 0,
   onTest,
   onSave,
   onSyncNow,
@@ -238,8 +241,14 @@ export default function DatabaseSettings({
                 </button>
               </div>
               <p className="mt-2 text-[11px] leading-relaxed text-ink/45">
-                Data di perangkat baru otomatis dipulihkan dari server saat
-                riwayat lokal masih kosong. {dbConfig.host && `Terkonfigurasi: ${maskConnectionString(dbConfig)}`}
+                Sinkron dua arah per entitas (LWW): tulisan offline mengantre dan
+                otomatis terkirim saat server kembali terjangkau.
+                {pendingSyncCount > 0 && (
+                  <span className="ml-1 rounded-stamp bg-tomato/10 px-1.5 py-0.5 font-mono font-bold text-tomato">
+                    {pendingSyncCount} menunggu sinkron
+                  </span>
+                )}
+                {dbConfig.host && ` Terkonfigurasi: ${maskConnectionString(dbConfig)}`}
               </p>
             </div>
           )}
