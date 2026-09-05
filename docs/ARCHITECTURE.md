@@ -67,6 +67,7 @@ src/
 | cart, discountPct, orderType, table | store | dipakai PaymentModal/CartPanel |
 | transactions, seq, stockMap | store | dipakai HistoryView/StockView |
 | cashierId, pin | store | dipakai Header/ManagerModals |
+| ingredientMap | store | sumber kebenaran stok bahan; stok menu TURUNAN via resep |
 | view, query, category | store | dipertahankan saat pindah tab |
 | modal terbuka (pay/receipt/pin/settings/drawer), toasts | store | UI sementara |
 
@@ -101,6 +102,15 @@ src/
   UI di `VoidModal.tsx` + tombol void di `HistoryView`.
 - **Notifikasi stok & target harian (B4/B5):** derivasi di `domain/` + efek store;
   tampilan baru di components.
+- **Stok berbasis bahan baku (resep):** SUDAH DIPASANG — `Ingredient`/`RecipeLine`
+  di `types.ts`, katalog 22 bahan + resep 10 menu di `data/products.ts`, logika murni
+  di `domain/recipe.ts` (`derivedServings`, `computeEffectiveStockMap`,
+  `ingredientsForCart`, `restoredIngredients`; 14 tests). **Bahan adalah satu-satunya
+  angka yang disimpan** — stok menu dihitung dari resep (bahan habis = porsi habis).
+  Penjualan memotong bahan per resep (`confirmPayment`), void mengembalikannya.
+  Bahan ikut sinkron LWW sebagai entitas `ingredients`. Menu tanpa resep (tidak ada
+  saat ini) tetap pakai stok langsung — kompatibel mundur. UI: section Bahan Baku
+  di Stok + baris resep per menu.
 - **Lazy loading (A3) & ErrorBoundary (C1):** SUDAH DIPASANG — HistoryView/StockView
   lazy via `React.lazy` + `Suspense`; ErrorBoundary di `main.tsx` membungkus `<App/>`.
   View berpindah tab kini tersinkron hash URL + tombol back browser (C2, lib/routes.ts);
