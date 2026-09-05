@@ -25,11 +25,21 @@ src/
  │   ├─ storage.ts            satu-satunya akses localStorage (kunci + load/save/reset)
  │   ├─ routes.ts             view ↔ hash URL (#/kasir | #/stok | #/riwayat) — pure
  │   ├─ format.ts             format uang/tanggal id-ID
- │   └─ export.ts             CSV & struk PDF (jsPDF)
+ │   ├─ export.ts             CSV & struk PDF (jsPDF)
+ │   ├─ dbConfig.ts           helper MURNI config Postgres: parse/build/validate (TDD)
+ │   └─ api.ts                klien fetch server API (health, status, test, sync, pull)
+ ├─ server/                   API jembatan browser ↔ PostgreSQL (Express + pg)
+ │   ├─ index.js              endpoint: health, db/status, db/config, db/test-connection,
+ │   │                        sync/push, data (pull)
+ │   ├─ src/db.js             parseDatabaseUrl, buildConnectionString, testConnection
+ │   │                        (pesan error ramah), pool lazy singleton, auto-migration
+ │   ├─ migrations/001_init.sql  tabel pos_transactions/pos_stock/pos_shifts/
+ │   │                        pos_held_orders/pos_meta (JSONB, idempotent)
+ │   └─ Dockerfile            deploy Easypanel (PORT + DATABASE_URL)
  └─ components/               murni presentasional — terima props, panggil callback
      Header · ProductGrid · CartPanel · PaymentModal · ReceiptModal
      HistoryView · StockView · ManagerModals · Toast · icons · ErrorBoundary
-     ShiftPanel · HeldOrdersDrawer · VoidModal
+     ShiftPanel · HeldOrdersDrawer · VoidModal · DatabaseSettings
 ```
 
 ## Aturan kepemilikan & arah data
@@ -62,8 +72,13 @@ src/
 
 ## Seam untuk fitur berikutnya
 
-- **PostgreSQL/Supabase (A1):** ganti isi `lib/storage.ts` (atau tambah adapter paralel
-  `lib/sync.ts`) — pemanggil tetap store; tambahkan antrean tulis offline di store.
+- **PostgreSQL (A1):** DIPASANG — `server/` (Express + pg) jembatan browser→Postgres;
+  menu Pengaturan → Database PostgreSQL (mode lokal/server, form koneksi, Uji Koneksi,
+  Simpan & Aktifkan, Sinkronkan Sekarang, Ambil dari Server). Konfigurasi via env
+  `DATABASE_URL` (Easypanel) atau file `server/data/db-config.json`. Migrasi SQL
+  otomatis saat pertama konek. Auto-pull ke perangkat baru saat riwayat lokal kosong.
+  Pola diambil dari project Accounting-Software. Sinkronisasi v1: push menimpa server,
+  pull menimpa lokal (whole-dataset); konflik antar-perangkat belum ditangani.
 - **Shift kasir (B1):** SUDAH DIPASANG — `Shift` entity di `types.ts`, logika murni
   di `domain/shift.ts` (7 tests), state di `store.ts`, UI di `components/ShiftPanel.tsx`.
   Transaksi ditandai `shiftId`. Tinggal laporan shift di Riwayat view.
