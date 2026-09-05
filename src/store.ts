@@ -502,8 +502,10 @@ export function usePosStore() {
       pushToast(r.message, r.ok ? "success" : "warn");
       return r;
     } catch (err) {
-      pushToast(err instanceof Error ? err.message : "Uji koneksi gagal", "warn");
-      return null;
+      const msg = err instanceof Error ? err.message : "Uji koneksi gagal";
+      pushToast(msg, "warn");
+      // Tetap kembalikan hasil agar pesan tampil permanen di panel, bukan hanya toast
+      return { ok: false, message: msg, latencyMs: 0 };
     } finally {
       setDbBusy(false);
     }
