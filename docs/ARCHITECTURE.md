@@ -76,9 +76,19 @@ src/
   menu Pengaturan → Database PostgreSQL (mode lokal/server, form koneksi, Uji Koneksi,
   Simpan & Aktifkan, Sinkronkan Sekarang, Ambil dari Server). Konfigurasi via env
   `DATABASE_URL` (Easypanel) atau file `server/data/db-config.json`. Migrasi SQL
-  otomatis saat pertama konek. Auto-pull ke perangkat baru saat riwayat lokal kosong.
-  Pola diambil dari project Accounting-Software. Sinkronisasi v1: push menimpa server,
-  pull menimpa lokal (whole-dataset); konflik antar-perangkat belum ditangani.
+  otomatis saat pertama konek. Pola diambil dari project Accounting-Software.
+  **Sinkronisasi conflict-aware (LWW per entitas):** setiap tulisan Transaction/Shift/
+  HeldOrder/stok membawa `updatedAt` (epoch ms); server (`/api/sync/ops`) menerima
+  upsert hanya bila stamp-nya lebih baru, dan penghapusan dicatat sebagai tombstone
+  (`pos_deletions`, GC 30 hari) agar perangkat lain tidak menghidupkan kembali data
+  yang sudah dihapus. Tulisan offline masuk **antrian sinkron** (`senja-pos:syncQueue`,
+  digabung per key saat flush, maks. 200 op) dan otomatis terkirim saat server
+  kembali terjangkau (event `online` + interval 30 dtk), lalu data server ditarik
+  dan **digabung LWW** (`domain/sync.ts` `mergeServerData`, 17 tests) — bukan penimpaan
+  menyeluruh. Stamp stok per product key di `senja-pos:stockStamp`; tombstone lokal di
+  `senja-pos:deletions` melindungi pull dari menghidupkan kembali penghapusan yang
+  belum terkirim. Tradeoff LWW standar: perangkat dengan jam meleset dapat menimpa
+  tulisan lebih baru; resolusi konflik per-field tidak dilakukan.
 - **Shift kasir (B1):** SUDAH DIPASANG — `Shift` entity di `types.ts`, logika murni
   di `domain/shift.ts` (7 tests), state di `store.ts`, UI di `components/ShiftPanel.tsx`.
   Transaksi ditandai `shiftId`. Tinggal laporan shift di Riwayat view.
