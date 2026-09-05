@@ -36,6 +36,7 @@ export default function App() {
 
     // Stok
     stockMap, setStock, restockOne, restockAll,
+    ingredientMap, setIngredientQty, restockIngredient, restockAllIngredients,
 
     // Kasir, PIN & zona berbahaya
     cashiers, cashierId, selectCashier,
@@ -145,6 +146,10 @@ export default function App() {
               onRestockOne={restockOne}
               onRestockAll={restockAll}
               transactions={transactions}
+              ingredients={ingredientMap}
+              onSetIngredientQty={setIngredientQty}
+              onRestockIngredient={restockIngredient}
+              onRestockAllIngredients={restockAllIngredients}
             />
           </Suspense>
         </main>

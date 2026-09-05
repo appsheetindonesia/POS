@@ -515,7 +515,11 @@ export function usePosStore() {
     requestPin("Isi ulang semua stok", () => {
       const fresh = initialStockMap(PRODUCTS);
       writeStock(() => fresh, Object.keys(fresh));
-      pushToast("Semua stok diisi ulang", "success");
+      // Menu ber-resep menurunkan stok dari bahan — isi ulang bahan ke nilai katalog
+      const ingFresh: Record<string, number> = {};
+      for (const b of INGREDIENTS) ingFresh[b.id] = b.qty;
+      writeIngredients(ingFresh);
+      pushToast("Semua stok & bahan diisi ulang", "success");
     });
 
   // ── Aksi terlindungi PIN lainnya ──────────────────────
