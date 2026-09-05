@@ -139,6 +139,7 @@ const ENTITIES = {
   transactions: { table: "pos_transactions", pk: "id" },
   shifts: { table: "pos_shifts", pk: "id" },
   heldOrders: { table: "pos_held_orders", pk: "id" },
+  ingredients: { table: "pos_ingredients", pk: "id" },
 };
 
 app.post("/api/sync/ops", async (req, res) => {
@@ -270,13 +271,14 @@ app.get("/api/data", async (_req, res) => {
   if (!cfg) return res.status(400).json({ ok: false, message: "Belum ada konfigurasi database" });
   const pool = getPool(cfg);
   try {
-    const [tx, stock, shifts, held, meta, dels] = await Promise.all([
+    const [tx, stock, shifts, held, meta, dels, ings] = await Promise.all([
       pool.query("SELECT data, updated_at FROM pos_transactions ORDER BY updated_at"),
       pool.query("SELECT product_id, qty, updated_at FROM pos_stock"),
       pool.query("SELECT data, updated_at FROM pos_shifts ORDER BY updated_at"),
       pool.query("SELECT data, updated_at FROM pos_held_orders ORDER BY updated_at"),
       pool.query("SELECT key, value FROM pos_meta"),
       pool.query("SELECT entity, key, deleted_at FROM pos_deletions"),
+      pool.query("SELECT data, updated_at FROM pos_ingredients ORDER BY updated_at"),
       // GC tombstone: tulisan offline > 30 hari tidak lagi dilindungi —
       // perangkat yang offline lebih lama dari itu dapat menghidupkan kembali
       // data lama (tradeoff standar log penghapusan; menjaga pertumbuhan log).
@@ -288,6 +290,7 @@ app.get("/api/data", async (_req, res) => {
       heldOrders: held.rows.map((r) => ({ ...r.data, updatedAt: Date.parse(r.updated_at) })),
       stockMap: Object.fromEntries(stock.rows.map((r) => [r.product_id, r.qty])),
       stockStamps: Object.fromEntries(stock.rows.map((r) => [r.product_id, Date.parse(r.updated_at)])),
+      ingredients: ings.rows.map((r) => ({ ...r.data, updatedAt: Date.parse(r.updated_at) })),
       deletions: dels.rows.map((r) => ({
         entity: r.entity,
         key: r.key,
