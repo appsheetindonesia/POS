@@ -14,9 +14,32 @@ export interface Product {
   emoji: string;
   desc: string;
   image: string;
-  /** Stok awal — nilai berjalan disimpan terpisah di localStorage */
+  /** Stok awal — nilai berjalan disimpan terpisah di localStorage.
+   *  Untuk menu ber-resep, angka ini IGNORED: stok diturunkan dari bahan. */
   stock: number;
   popular?: boolean;
+  /** Resep bahan baku — bila ada, stok menu = porsi turunan dari bahan */
+  recipe?: RecipeLine[];
+}
+
+/** Satu bahan baku dalam persediaan (susu, gula aren, espresso, …) */
+export interface Ingredient {
+  id: string;
+  name: string;
+  /** Satuan tampilan: ml, g, pcs, … */
+  unit: string;
+  /** Jumlah tersedia saat ini, dalam `unit` */
+  qty: number;
+  /** Ambang minimum — tampil "perlu restock" bila qty < minQty */
+  minQty: number;
+  /** Stamp sinkronisasi LWW */
+  updatedAt?: number;
+}
+
+/** Komposisi satu porsi menu: berapa `ingredientId` yang terpakai */
+export interface RecipeLine {
+  ingredientId: string;
+  qtyPerServing: number;
 }
 
 export interface CartItem {

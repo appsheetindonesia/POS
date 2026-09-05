@@ -20,6 +20,8 @@ export const LS = {
   deletions: "senja-pos:deletions",
   /** Stamp per product key utk LWW stok: Record<productId, epochMs> */
   stockStamp: "senja-pos:stockStamp",
+  /** Bahan baku: Ingredient[] — satu sumber kebenaran stok menu ber-resep */
+  ingredients: "senja-pos:ingredients",
 } as const;
 
 export type LSKey = (typeof LS)[keyof typeof LS];

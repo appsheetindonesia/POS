@@ -47,3 +47,9 @@ export const SYNC_QUEUE_LIMIT = 200;
 
 /** Tombstone penghapusan disimpan maksimal (FIFO) sebelum dikirim/dipangkas */
 export const DELETION_LOG_LIMIT = 500;
+
+/** Restock bahan tunggal → isi ke nilai ini (bukan katalog) */
+export const INGREDIENT_RESTOCK_DEFAULT = 1000;
+
+/** Kunci meta untuk bahan dalam antrian sync stock-like */
+export const INGREDIENT_ENTITY = "ingredients" as const;
