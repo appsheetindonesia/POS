@@ -152,6 +152,8 @@ interface SettingsModalProps {
   dbConfig: DbConfig;
   dbStatus: DbStatus;
   dbBusy: boolean;
+  /** Jumlah tulisan offline yang menunggu dikirim ke server (badge di panel sinkron) */
+  pendingSyncCount?: number;
   onTest: (cfg: DbConfig) => Promise<{ ok: boolean; message: string; latencyMs: number } | null>;
   onSave: (cfg: DbConfig) => Promise<void>;
   onSyncNow: () => Promise<void>;
@@ -167,6 +169,7 @@ export function SettingsModal({
   dbConfig,
   dbStatus,
   dbBusy,
+  pendingSyncCount,
   onTest,
   onSave,
   onSyncNow,
@@ -245,6 +248,7 @@ export function SettingsModal({
           dbConfig={dbConfig}
           dbStatus={dbStatus}
           dbBusy={dbBusy}
+          pendingSyncCount={pendingSyncCount}
           onTest={onTest}
           onSave={onSave}
           onSyncNow={onSyncNow}
