@@ -13,6 +13,7 @@ export const LS = {
   shift: "senja-pos:shift",
   shifts: "senja-pos:shifts",
   heldOrders: "senja-pos:heldOrders",
+  dbConfig: "senja-pos:dbConfig",
 } as const;
 
 export type LSKey = (typeof LS)[keyof typeof LS];

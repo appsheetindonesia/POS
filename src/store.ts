@@ -34,6 +34,8 @@ import { needsRefreshGuard } from "./domain/leaveGuard";
 import { LS, load, removeAllData, save } from "./lib/storage";
 import { DEFAULT_VIEW, hashForView, viewFromHash } from "./lib/routes";
 import { formatIDR, isSameDay } from "./lib/format";
+import { api, type DbStatus } from "./lib/api";
+import { EMPTY_DB_CONFIG, validateDbConfig, type DbConfig } from "./lib/dbConfig";
 import type {
   CartItem,
   CategoryFilter,
@@ -85,6 +87,14 @@ export function usePosStore() {
   const [shifts, setShifts] = useState<Shift[]>(() => load(LS.shifts, []));
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>(() => load(LS.heldOrders, []));
   const [heldOrdersOpen, setHeldOrdersOpen] = useState(false);
+  const [dbConfig, setDbConfig] = useState<DbConfig>(() => load(LS.dbConfig, EMPTY_DB_CONFIG));
+  const [dbStatus, setDbStatus] = useState<DbStatus>({
+    source: "none",
+    configured: false,
+    connected: false,
+    storageMode: "local",
+  });
+  const [dbBusy, setDbBusy] = useState(false);
 
   // ── State UI sementara ──
   const [payOpen, setPayOpen] = useState(false);
@@ -106,6 +116,7 @@ export function usePosStore() {
   useEffect(() => save(LS.shift, currentShift), [currentShift]);
   useEffect(() => save(LS.shifts, shifts), [shifts]);
   useEffect(() => save(LS.heldOrders, heldOrders), [heldOrders]);
+  useEffect(() => save(LS.dbConfig, dbConfig), [dbConfig]);
 
   // ── Sinkronisasi view ↔ hash URL (tombol back browser) ──
   useEffect(() => {
@@ -399,6 +410,8 @@ export function usePosStore() {
     setCurrentShift(null);
     setShifts([]);
     setHeldOrders([]);
+    setDbConfig(EMPTY_DB_CONFIG);
+    setDbStatus({ source: "none", configured: false, connected: false, storageMode: "local" });
     setSettingsOpen(false);
     pushToast("Semua data direset ke awal", "info");
   };
@@ -446,6 +459,129 @@ export function usePosStore() {
     pushToast(`Shift ditutup — ${diffLabel}`, diff >= 0 ? "success" : "warn");
   };
 
+  // ── Database PostgreSQL ────────────────────────────────
+  useEffect(() => {
+    if (dbConfig.storageMode !== "postgresql") return;
+    let cancelled = false;
+    api
+      .dbStatus()
+      .then((s) => {
+        if (cancelled) return;
+        setDbStatus(s);
+        // Perangkat baru (lokal kosong) + server terhubung → tarik data dari Postgres
+        if (s.connected && transactions.length === 0) {
+          api
+            .pullData()
+            .then((d) => {
+              if (cancelled) return;
+              if (d.transactions.length > 0) setTransactions(d.transactions);
+              if (Object.keys(d.stockMap).length > 0) setStockMap(d.stockMap);
+              if (d.shifts.length > 0) setShifts(d.shifts);
+              if (d.heldOrders.length > 0) setHeldOrders(d.heldOrders);
+              if (d.seq > 1) setSeq(d.seq);
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbConfig.storageMode]);
+
+  const testDbConnection = async (cfg: DbConfig) => {
+    const errs = validateDbConfig(cfg);
+    if (errs.length > 0) {
+      pushToast(errs.join(" · "), "warn");
+      return null;
+    }
+    setDbBusy(true);
+    try {
+      const r = await api.testConnection(cfg);
+      pushToast(r.message, r.ok ? "success" : "warn");
+      return r;
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : "Uji koneksi gagal", "warn");
+      return null;
+    } finally {
+      setDbBusy(false);
+    }
+  };
+
+  const saveDbConfig = async (cfg: DbConfig) => {
+    const errs = validateDbConfig(cfg);
+    if (errs.length > 0) {
+      pushToast(errs.join(" · "), "warn");
+      return;
+    }
+    setDbBusy(true);
+    try {
+      const r = await api.saveConfig(cfg);
+      if (r.ok) {
+        setDbConfig({ ...cfg, storageMode: "postgresql" });
+        setDbStatus({
+          source: "file",
+          configured: true,
+          connected: true,
+          storageMode: "postgresql",
+          host: cfg.host,
+          database: cfg.database,
+          port: cfg.port,
+        });
+        pushToast(`Database aktif — ${r.message}`, "success");
+      } else {
+        pushToast(r.message, "warn");
+      }
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : "Gagal simpan konfigurasi", "warn");
+    } finally {
+      setDbBusy(false);
+    }
+  };
+
+  const syncNow = async () => {
+    if (dbStatus.storageMode !== "postgresql" || !dbStatus.connected) {
+      pushToast("Database belum terhubung", "warn");
+      return;
+    }
+    setDbBusy(true);
+    try {
+      const r = await api.pushSync({ transactions, stockMap, shifts, heldOrders, seq });
+      if (r.ok) {
+        pushToast(
+          `Tersinkron: ${r.counts.transactions} transaksi, ${r.counts.stock} produk, ${r.counts.shifts} shift`,
+          "success",
+        );
+      }
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : "Sinkronisasi gagal", "warn");
+    } finally {
+      setDbBusy(false);
+    }
+  };
+
+  const pullFromServer = async () => {
+    if (dbStatus.storageMode !== "postgresql" || !dbStatus.connected) {
+      pushToast("Database belum terhubung", "warn");
+      return;
+    }
+    setDbBusy(true);
+    try {
+      const d = await api.pullData();
+      if (d.transactions.length > 0) setTransactions(d.transactions);
+      if (Object.keys(d.stockMap).length > 0) setStockMap(d.stockMap);
+      if (d.shifts.length > 0) setShifts(d.shifts);
+      if (d.heldOrders.length > 0) setHeldOrders(d.heldOrders);
+      if (d.seq > 1) setSeq(d.seq);
+      pushToast("Data diambil dari server", "info");
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : "Gagal ambil data", "warn");
+    } finally {
+      setDbBusy(false);
+    }
+  };
+
   return {
     // Navigasi & filter katalog
     view, setView,
@@ -480,6 +616,10 @@ export function usePosStore() {
 
     // Pesanan parkir
     heldOrders, heldOrdersOpen, setHeldOrdersOpen,
+
+    // Database PostgreSQL
+    dbConfig, dbStatus, dbBusy,
+    testDbConnection, saveDbConfig, syncNow, pullFromServer,
 
     // UI sementara
     drawerOpen, setDrawerOpen,
