@@ -22,6 +22,7 @@ import {
 import {
   DEFAULT_CASHIER_ID,
   DEFAULT_PIN,
+  DELETION_LOG_LIMIT,
   DISCOUNT_APPROVAL_PCT,
   HISTORY_LIMIT,
   SHIFT_HISTORY_LIMIT,
@@ -31,6 +32,12 @@ import {
 import { openShift as createShift, closeShift as finishShift, shiftDifference } from "./domain/shift";
 import { isVoided, restoredStock } from "./domain/void";
 import { needsRefreshGuard } from "./domain/leaveGuard";
+import {
+  buildFlushOps,
+  mergeServerData,
+  type Deletion,
+  type SyncOp,
+} from "./domain/sync";
 import { LS, load, removeAllData, save } from "./lib/storage";
 import { DEFAULT_VIEW, hashForView, viewFromHash } from "./lib/routes";
 import { formatIDR, isSameDay } from "./lib/format";
@@ -87,6 +94,11 @@ export function usePosStore() {
   const [shifts, setShifts] = useState<Shift[]>(() => load(LS.shifts, []));
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>(() => load(LS.heldOrders, []));
   const [heldOrdersOpen, setHeldOrdersOpen] = useState(false);
+  const [syncQueue, setSyncQueue] = useState<SyncOp[]>(() => load(LS.syncQueue, []));
+  const [deletions, setDeletions] = useState<Deletion[]>(() => load(LS.deletions, []));
+  const [stockStamp, setStockStamp] = useState<Record<string, number>>(() =>
+    load(LS.stockStamp, {}),
+  );
   const [dbConfig, setDbConfig] = useState<DbConfig>(() => load(LS.dbConfig, EMPTY_DB_CONFIG));
   const [dbStatus, setDbStatus] = useState<DbStatus>({
     source: "none",
@@ -117,6 +129,9 @@ export function usePosStore() {
   useEffect(() => save(LS.shifts, shifts), [shifts]);
   useEffect(() => save(LS.heldOrders, heldOrders), [heldOrders]);
   useEffect(() => save(LS.dbConfig, dbConfig), [dbConfig]);
+  useEffect(() => save(LS.syncQueue, syncQueue), [syncQueue]);
+  useEffect(() => save(LS.deletions, deletions), [deletions]);
+  useEffect(() => save(LS.stockStamp, stockStamp), [stockStamp]);
 
   // ── Sinkronisasi view ↔ hash URL (tombol back browser) ──
   useEffect(() => {
@@ -153,6 +168,42 @@ export function usePosStore() {
     setToasts((t) => [...t.slice(-2), { id, text, tone }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2400);
   }, []);
+
+  // ── Antrian sinkronisasi offline ──
+  // Setiap mutasi entitas tersinkron mengantri op; antrian digabungkan (LWW per key)
+  // saat flush. Delete mengantri tombstone agar device lain tidak menghidupkan kembali.
+  const enqueueSync = useCallback((ops: SyncOp[]) => {
+    if (ops.length === 0) return;
+    setSyncQueue((q) => [...q, ...ops]);
+  }, []);
+
+  /** Tulis stok + stamp LWW + antrian sync dalam satu titik. */
+  const writeStock = useCallback(
+    (updater: (m: Record<string, number>) => Record<string, number>, keys: string[]) => {
+      const stamp = Date.now();
+      setStockMap((m) => {
+        const next = updater(m);
+        setStockStamp((st) => {
+          const nextSt = { ...st };
+          for (const k of keys) nextSt[k] = stamp;
+          return nextSt;
+        });
+        enqueueSync(keys.map((k) => ({ kind: "upsert" as const, entity: "stock" as const, key: k })));
+        return next;
+      });
+    },
+    [enqueueSync],
+  );
+
+  /** Hapus entitas: catat tombstone lokal + antrikan delete. */
+  const trackDeletion = useCallback(
+    (entity: SyncOp["entity"], key: string) => {
+      const d: Deletion = { entity, key, deletedAt: Date.now() };
+      setDeletions((prev) => [d, ...prev].slice(0, DELETION_LOG_LIMIT));
+      enqueueSync([{ kind: "delete", entity, key }]);
+    },
+    [enqueueSync],
+  );
 
   const activeCashier = useMemo(
     () => CASHIERS.find((c) => c.id === cashierId) ?? CASHIERS[0],
@@ -235,7 +286,8 @@ export function usePosStore() {
 
   const parkOrder = (label: string) => {
     if (cart.length === 0) return;
-    const id = `held-${Date.now()}`;
+    const now = Date.now();
+    const id = `held-${now}`;
     const order: HeldOrder = {
       id,
       label: label.trim() || `Pesanan ${heldOrders.length + 1}`,
@@ -243,8 +295,10 @@ export function usePosStore() {
       discountPct,
       orderType,
       table,
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     };
+    enqueueSync([{ kind: "upsert", entity: "heldOrders", key: id }]);
     setHeldOrders((prev) => {
       const next = [order, ...prev];
       return next.length > MAX_HELD_ORDERS ? next.slice(0, MAX_HELD_ORDERS) : next;
@@ -266,11 +320,13 @@ export function usePosStore() {
     setDiscountPct(order.discountPct);
     setOrderType(order.orderType);
     setTable(order.table);
+    trackDeletion("heldOrders", orderId);
     setHeldOrders((prev) => prev.filter((o) => o.id !== orderId));
     pushToast(`Pesanan "${order.label}" dipulihkan`, "success");
   };
 
   const deleteHeldOrder = (orderId: string) => {
+    trackDeletion("heldOrders", orderId);
     setHeldOrders((prev) => prev.filter((o) => o.id !== orderId));
     pushToast("Pesanan parkir dihapus", "warn");
   };
@@ -317,10 +373,11 @@ export function usePosStore() {
       productMap: PRODUCT_MAP,
     });
 
-    // Kurangi stok sesuai yang terjual
-    setStockMap((m) => deductStock(m, cart));
+    // Kurangi stok sesuai yang terjual (bertanda LWW + antrian sync)
+    writeStock((m) => deductStock(m, cart), cart.map((i) => i.productId));
 
     setTransactions((t) => [tx, ...t].slice(0, HISTORY_LIMIT));
+    enqueueSync([{ kind: "upsert", entity: "transactions", key: tx.id }]);
     setSeq((s) => s + 1);
     setCart([]);
     setDiscountPct(0);
@@ -340,7 +397,7 @@ export function usePosStore() {
   // ── Stok ──────────────────────────────────────────────
   const setStock = (id: string, value: number) => {
     const n = Math.max(0, Math.min(MAX_STOCK, value));
-    setStockMap((m) => ({ ...m, [id]: n }));
+    writeStock((m) => ({ ...m, [id]: n }), [id]);
   };
 
   const restockOne = (id: string) => {
@@ -351,7 +408,8 @@ export function usePosStore() {
 
   const restockAll = () =>
     requestPin("Isi ulang semua stok", () => {
-      setStockMap(initialStockMap(PRODUCTS));
+      const fresh = initialStockMap(PRODUCTS);
+      writeStock(() => fresh, Object.keys(fresh));
       pushToast("Semua stok diisi ulang", "success");
     });
 
@@ -363,16 +421,19 @@ export function usePosStore() {
       return;
     }
     requestPin(`Void ${tx.invoice} — ${formatIDR(tx.total)}`, () => {
-      // Restore stock
+      // Restore stock (bertanda LWW + antrian sync)
       const restored = restoredStock(tx.lines);
-      setStockMap((m) => {
-        const next = { ...m };
-        for (const [pid, qty] of Object.entries(restored)) {
-          next[pid] = (next[pid] ?? 0) + qty;
-        }
-        return next;
-      });
-      // Mark voided
+      writeStock(
+        (m) => {
+          const next = { ...m };
+          for (const [pid, qty] of Object.entries(restored)) {
+            next[pid] = (next[pid] ?? 0) + qty;
+          }
+          return next;
+        },
+        Object.keys(restored),
+      );
+      // Mark voided (stamp LWW naik agar menang merge)
       setTransactions((prev) =>
         prev.map((t) =>
           t.id === txId
@@ -382,16 +443,28 @@ export function usePosStore() {
                 voidedAt: Date.now(),
                 voidedBy: activeCashier.id,
                 voidReason: reason,
+                updatedAt: Date.now(),
               }
             : t,
         ),
       );
+      enqueueSync([{ kind: "upsert", entity: "transactions", key: txId }]);
       pushToast(`${tx.invoice} di-void — stok dikembalikan`, "warn");
     });
   };
 
   const clearHistory = () =>
     requestPin("Hapus semua riwayat transaksi", () => {
+      const now = Date.now();
+      const stamps: Deletion[] = transactions.map((t) => ({
+        entity: "transactions" as const,
+        key: t.id,
+        deletedAt: now,
+      }));
+      setDeletions((prev) => [...stamps, ...prev].slice(0, DELETION_LOG_LIMIT));
+      enqueueSync(
+        stamps.map((d) => ({ kind: "delete" as const, entity: d.entity, key: d.key })),
+      );
       setTransactions([]);
       pushToast("Riwayat transaksi dihapus", "warn");
     });
@@ -405,11 +478,14 @@ export function usePosStore() {
     setOrderType("Dine-in");
     setTable("");
     setStockMap(initialStockMap(PRODUCTS));
+    setStockStamp({});
     setCashierId(DEFAULT_CASHIER_ID);
     setPin(DEFAULT_PIN);
     setCurrentShift(null);
     setShifts([]);
     setHeldOrders([]);
+    setSyncQueue([]);
+    setDeletions([]);
     setDbConfig(EMPTY_DB_CONFIG);
     setDbStatus({ source: "none", configured: false, connected: false, storageMode: "local" });
     setSettingsOpen(false);
@@ -440,6 +516,7 @@ export function usePosStore() {
       openingFloat,
     });
     setCurrentShift(s);
+    enqueueSync([{ kind: "upsert", entity: "shifts", key: s.id }]);
     pushToast(`Shift dibuka — modal ${formatIDR(openingFloat)}`, "success");
   };
 
@@ -453,6 +530,7 @@ export function usePosStore() {
     const closed = finishShift(currentShift, closingFloat, cashTotal, allTotal, shiftTxs.length);
     setShifts((prev) => [closed, ...prev].slice(0, SHIFT_HISTORY_LIMIT));
     setCurrentShift(null);
+    enqueueSync([{ kind: "upsert", entity: "shifts", key: closed.id }]);
 
     const diff = shiftDifference(closed);
     const diffLabel = diff === 0 ? "Tepat" : diff > 0 ? `Surplus ${formatIDR(diff)}` : `Kurang ${formatIDR(diff)}`;
@@ -460,35 +538,92 @@ export function usePosStore() {
   };
 
   // ── Database PostgreSQL ────────────────────────────────
+  // Ref ke state sync terkini — aksi async & efek membaca versi terbaru
+  // tanpa masalah stale-closure.
+  const syncStateRef = useRef({ transactions, shifts, heldOrders, stockMap, stockStamp, deletions });
+  syncStateRef.current = { transactions, shifts, heldOrders, stockMap, stockStamp, deletions };
+  const seqRef = useRef(seq);
+  seqRef.current = seq;
+  const queueRef = useRef(syncQueue);
+  queueRef.current = syncQueue;
+  const flushingRef = useRef(false);
+
+  /** Terapkan hasil merge LWW ke state (array identitas stabil bila tak berubah). */
+  const applyMerge = useCallback((r: ReturnType<typeof mergeServerData>) => {
+    setTransactions(r.transactions);
+    setShifts(r.shifts);
+    setHeldOrders(r.heldOrders);
+    setStockMap(r.stockMap);
+    setStockStamp(r.stockStamp);
+    setDeletions((cur) => (cur.length === r.deletions.length ? cur : r.deletions));
+    if (r.seq > seqRef.current) setSeq(r.seq);
+  }, []);
+
+  /**
+   * Kirim seluruh antrian offline ke server (ops LWW per entitas).
+   * Berhasil = antrian dikosongkan (op usang boleh ditolak server — LWW).
+   * Gagal = antrian utuh, dicoba lagi saat koneksi kembali.
+   */
+  const flushQueue = useCallback(async (): Promise<boolean> => {
+    const q = queueRef.current;
+    if (q.length === 0) return true;
+    const deletedAtOf = (entity: string, key: string) =>
+      syncStateRef.current.deletions.find((d) => d.entity === entity && d.key === key)?.deletedAt;
+    const wire = buildFlushOps(syncStateRef.current, q, seqRef.current).map((op) =>
+      op.kind === "delete" ? { ...op, deletedAt: deletedAtOf(op.entity, op.key) ?? Date.now() } : op,
+    );
+    try {
+      const r = await api.pushOps(wire);
+      if (!r.ok) return false;
+      // Buang hanya op yang dikirim (snapshot depan antrian); op baru yang
+      // masuk selama flush tetap dipertahankan.
+      setSyncQueue((cur) => cur.slice(q.length));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /** Tarik data server dan gabungkan LWW ke lokal (dua arah konvergen). */
+  const pullAndMerge = useCallback(async () => {
+    const d = await api.pullData();
+    applyMerge(
+      mergeServerData(
+        syncStateRef.current,
+        { ...d, stockStamps: d.stockStamps ?? {}, deletions: d.deletions ?? [] },
+        seqRef.current,
+      ),
+    );
+  }, [applyMerge]);
+
+  // ── Auto-sync: saat mode server aktif — flush antrean lalu merge, dipicu
+  // oleh mount, event online browser, dan interval ringan. Merge no-op tidak
+  // mengubah referensi array sehingga tidak memicu render/simpan ulang.
   useEffect(() => {
     if (dbConfig.storageMode !== "postgresql") return;
     let cancelled = false;
-    api
-      .dbStatus()
-      .then((s) => {
+    const attempt = async () => {
+      try {
+        const s = await api.dbStatus();
         if (cancelled) return;
         setDbStatus(s);
-        // Perangkat baru (lokal kosong) + server terhubung → tarik data dari Postgres
-        if (s.connected && transactions.length === 0) {
-          api
-            .pullData()
-            .then((d) => {
-              if (cancelled) return;
-              if (d.transactions.length > 0) setTransactions(d.transactions);
-              if (Object.keys(d.stockMap).length > 0) setStockMap(d.stockMap);
-              if (d.shifts.length > 0) setShifts(d.shifts);
-              if (d.heldOrders.length > 0) setHeldOrders(d.heldOrders);
-              if (d.seq > 1) setSeq(d.seq);
-            })
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
+        if (!s.connected) return;
+        await flushQueue();
+        if (cancelled) return;
+        await pullAndMerge();
+      } catch {
+        /* offline / server mati — dicoba lagi oleh interval & event online */
+      }
+    };
+    attempt();
+    const timer = window.setInterval(attempt, 30_000);
+    window.addEventListener("online", attempt);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("online", attempt);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbConfig.storageMode]);
+  }, [dbConfig.storageMode, flushQueue, pullAndMerge]);
 
   const testDbConnection = async (cfg: DbConfig) => {
     const errs = validateDbConfig(cfg);
@@ -542,6 +677,7 @@ export function usePosStore() {
     }
   };
 
+  /** Sinkron dua arah manual: flush antrian → tarik & gabung LWW. */
   const syncNow = async () => {
     if (dbStatus.storageMode !== "postgresql" || !dbStatus.connected) {
       pushToast("Database belum terhubung", "warn");
@@ -549,13 +685,15 @@ export function usePosStore() {
     }
     setDbBusy(true);
     try {
-      const r = await api.pushSync({ transactions, stockMap, shifts, heldOrders, seq });
-      if (r.ok) {
-        pushToast(
-          `Tersinkron: ${r.counts.transactions} transaksi, ${r.counts.stock} produk, ${r.counts.shifts} shift`,
-          "success",
-        );
-      }
+      const flushed = await flushQueue();
+      await pullAndMerge();
+      const pending = queueRef.current.length;
+      pushToast(
+        flushed && pending === 0
+          ? "Tersinkron dua arah — data lokal & server konvergen"
+          : "Data server digabung (LWW) — sebagian antrean menunggu koneksi",
+        flushed && pending === 0 ? "success" : "info",
+      );
     } catch (err) {
       pushToast(err instanceof Error ? err.message : "Sinkronisasi gagal", "warn");
     } finally {
@@ -563,6 +701,7 @@ export function usePosStore() {
     }
   };
 
+  /** Tarik manual dari server (merge LWW, bukan penimpaan). */
   const pullFromServer = async () => {
     if (dbStatus.storageMode !== "postgresql" || !dbStatus.connected) {
       pushToast("Database belum terhubung", "warn");
@@ -570,13 +709,8 @@ export function usePosStore() {
     }
     setDbBusy(true);
     try {
-      const d = await api.pullData();
-      if (d.transactions.length > 0) setTransactions(d.transactions);
-      if (Object.keys(d.stockMap).length > 0) setStockMap(d.stockMap);
-      if (d.shifts.length > 0) setShifts(d.shifts);
-      if (d.heldOrders.length > 0) setHeldOrders(d.heldOrders);
-      if (d.seq > 1) setSeq(d.seq);
-      pushToast("Data diambil dari server", "info");
+      await pullAndMerge();
+      pushToast("Data server digabung (LWW)", "info");
     } catch (err) {
       pushToast(err instanceof Error ? err.message : "Gagal ambil data", "warn");
     } finally {
@@ -620,7 +754,7 @@ export function usePosStore() {
     heldOrders, heldOrdersOpen, setHeldOrdersOpen,
 
     // Database PostgreSQL
-    dbConfig, dbStatus, dbBusy,
+    dbConfig, dbStatus, dbBusy, pendingSyncCount: syncQueue.length,
     testDbConnection, saveDbConfig, syncNow, pullFromServer,
 
     // UI sementara
