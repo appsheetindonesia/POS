@@ -6,7 +6,7 @@
  */
 import type { DbConfig } from "./dbConfig";
 import type { Deletion } from "../domain/sync";
-import type { Transaction, Shift, HeldOrder } from "../types";
+import type { Transaction, Shift, HeldOrder, Ingredient } from "../types";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
@@ -44,6 +44,8 @@ export interface PullResult {
   seq: number;
   /** Stamp sinkronisasi per entitas (epoch ms) — untuk LWW merge */
   stockStamps?: Record<string, number>;
+  /** Bahan baku (LWW per id via updatedAt) */
+  ingredients?: Array<Ingredient & { updatedAt?: number }>;
   /** Log penghapusan (tombstone) dari perangkat lain */
   deletions?: Deletion[];
 }
@@ -51,7 +53,7 @@ export interface PullResult {
 /** Satu operasi tulis yang dikirim ke server saat flush / sinkron */
 export interface SyncOpWire {
   kind: "upsert" | "delete";
-  entity: "transactions" | "shifts" | "heldOrders" | "stock" | "meta";
+  entity: "transactions" | "shifts" | "heldOrders" | "stock" | "ingredients" | "meta";
   key: string;
   /** data utk upsert entitas (Transaction/Shift/HeldOrder) atau angka seq utk meta */
   data?: unknown;
