@@ -5,6 +5,7 @@
  * dengan env VITE_API_URL, mis. "http://192.168.1.5:3002".
  */
 import type { DbConfig } from "./dbConfig";
+import type { Deletion } from "../domain/sync";
 import type { Transaction, Shift, HeldOrder } from "../types";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
@@ -41,6 +42,31 @@ export interface PullResult {
   shifts: Shift[];
   heldOrders: HeldOrder[];
   seq: number;
+  /** Stamp sinkronisasi per entitas (epoch ms) — untuk LWW merge */
+  stockStamps?: Record<string, number>;
+  /** Log penghapusan (tombstone) dari perangkat lain */
+  deletions?: Deletion[];
+}
+
+/** Satu operasi tulis yang dikirim ke server saat flush / sinkron */
+export interface SyncOpWire {
+  kind: "upsert" | "delete";
+  entity: "transactions" | "shifts" | "heldOrders" | "stock" | "meta";
+  key: string;
+  /** data utk upsert entitas (Transaction/Shift/HeldOrder) atau angka seq utk meta */
+  data?: unknown;
+  /** khusus entity "stock" */
+  qty?: number;
+  stamp?: number;
+  /** khusus kind "delete" */
+  deletedAt?: number;
+}
+
+export interface OpsResult {
+  ok: boolean;
+  applied: number;
+  skipped: number;
+  deletions: number;
 }
 
 export class ApiError extends Error {
@@ -97,4 +123,8 @@ export const api = {
   }) => request<PushResult>("/api/sync/push", { method: "POST", body: JSON.stringify(payload) }),
 
   pullData: () => request<PullResult>("/api/data"),
+
+  /** Kirim batch ops LWW (upsert/delete per entitas) ke server */
+  pushOps: (ops: SyncOpWire[]) =>
+    request<OpsResult>("/api/sync/ops", { method: "POST", body: JSON.stringify({ ops }) }),
 };
