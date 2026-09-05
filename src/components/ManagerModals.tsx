@@ -206,21 +206,23 @@ export function SettingsModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4 backdrop-blur-[3px]" onClick={onClose}>
       <div
-        className="w-full max-w-sm animate-pop rounded-panel border-2 border-ink/10 bg-card p-6 shadow-deep"
+        className="max-h-full w-full max-w-sm animate-pop overflow-y-auto overflow-x-hidden rounded-panel border-2 border-ink/10 bg-card shadow-deep"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between">
+        <div className="sticky top-0 z-10 -mx-6 -mt-6 flex items-center justify-between border-b border-ink/8 bg-card px-6 pb-3 pt-6">
           <h3 className="font-display text-xl font-black italic text-ink">Pengaturan</h3>
           <button
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full text-ink/40 transition hover:bg-ink/8 hover:text-ink"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink/40 transition hover:bg-ink/8 hover:text-ink"
             aria-label="Tutup pengaturan"
           >
             <IconX size={16} />
           </button>
         </div>
+
+        <div className="p-6 pt-5">
 
         {/* Ubah PIN */}
         <div className="mt-5">
@@ -270,6 +272,7 @@ export function SettingsModal({
           >
             Reset Semua Data
           </button>
+        </div>
         </div>
       </div>
     </div>
