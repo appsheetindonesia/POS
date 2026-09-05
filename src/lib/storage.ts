@@ -14,6 +14,12 @@ export const LS = {
   shifts: "senja-pos:shifts",
   heldOrders: "senja-pos:heldOrders",
   dbConfig: "senja-pos:dbConfig",
+  /** Antrian tulisan offline: SyncOp[] menunggu dikirim ke server */
+  syncQueue: "senja-pos:syncQueue",
+  /** Log tombstone penghapusan: Deletion[] — penanda agar device lain tidak menghidupkan kembali data */
+  deletions: "senja-pos:deletions",
+  /** Stamp per product key utk LWW stok: Record<productId, epochMs> */
+  stockStamp: "senja-pos:stockStamp",
 } as const;
 
 export type LSKey = (typeof LS)[keyof typeof LS];

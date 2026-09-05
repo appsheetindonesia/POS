@@ -41,3 +41,9 @@ export const SHIFT_HISTORY_LIMIT = 50;
 
 /** Jumlah pesanan parkir maksimal */
 export const MAX_HELD_ORDERS = 10;
+
+/** Batas antrian tulisan offline yang menunggu sinkron (FIFO, tertua dibuang) */
+export const SYNC_QUEUE_LIMIT = 200;
+
+/** Tombstone penghapusan disimpan maksimal (FIFO) sebelum dikirim/dipangkas */
+export const DELETION_LOG_LIMIT = 500;

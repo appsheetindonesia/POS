@@ -60,6 +60,8 @@ export interface Transaction {
   method: PaymentMethod;
   cash: number | null;
   change: number | null;
+  /** Stamp sinkronisasi (LWW per entitas) — diubah setiap kali transaksi ditulis ulang (mis. void) */
+  updatedAt?: number;
 
   // ── Void / Refund ──
   voided?: boolean;
@@ -91,6 +93,8 @@ export interface HeldOrder {
   orderType: OrderType;
   table: string;
   createdAt: number;
+  /** Stamp sinkronisasi (LWW per entitas) */
+  updatedAt?: number;
 }
 
 export interface Shift {
@@ -107,4 +111,6 @@ export interface Shift {
   allTotal: number;
   /** Jumlah transaksi */
   txCount: number;
+  /** Stamp sinkronisasi (LWW per entitas) */
+  updatedAt?: number;
 }

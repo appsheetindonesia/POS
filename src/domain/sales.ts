@@ -73,6 +73,7 @@ export function buildTransaction(input: NewSaleInput): Transaction {
     id: `${Date.now()}-${seq}`,
     invoice: formatInvoice(seq),
     timestamp: Date.now(),
+    updatedAt: Date.now(),
     cashierId,
     shiftId,
     cashier: cashierName,

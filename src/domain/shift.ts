@@ -17,6 +17,7 @@ export function openShift(opts: {
     cashTotal: 0,
     allTotal: 0,
     txCount: 0,
+    updatedAt: Date.now(),
   };
 }
 
@@ -34,6 +35,7 @@ export function closeShift(
     cashTotal,
     allTotal,
     txCount,
+    updatedAt: Date.now(),
   };
 }
 
