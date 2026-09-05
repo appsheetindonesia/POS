@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_PIN } from "../domain/policy";
+import type { DbConfig } from "../lib/dbConfig";
+import type { DbStatus } from "../lib/api";
+import DatabaseSettings from "./DatabaseSettings";
 import { IconAlert, IconBackspace, IconCheck, IconLock, IconX } from "./icons";
 
 /* ─────────────────────────────────────────────────────────
@@ -146,9 +149,29 @@ interface SettingsModalProps {
   onResetAll: () => void;
   onClose: () => void;
   notify: (text: string, tone?: "success" | "info" | "warn") => void;
+  dbConfig: DbConfig;
+  dbStatus: DbStatus;
+  dbBusy: boolean;
+  onTest: (cfg: DbConfig) => Promise<{ ok: boolean; message: string; latencyMs: number } | null>;
+  onSave: (cfg: DbConfig) => Promise<void>;
+  onSyncNow: () => Promise<void>;
+  onPull: () => Promise<void>;
 }
 
-export function SettingsModal({ pin, onChangePin, onResetAll, onClose, notify }: SettingsModalProps) {
+export function SettingsModal({
+  pin,
+  onChangePin,
+  onResetAll,
+  onClose,
+  notify,
+  dbConfig,
+  dbStatus,
+  dbBusy,
+  onTest,
+  onSave,
+  onSyncNow,
+  onPull,
+}: SettingsModalProps) {
   const [cur, setCur] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -216,6 +239,17 @@ export function SettingsModal({ pin, onChangePin, onResetAll, onClose, notify }:
             Simpan PIN Baru
           </button>
         </div>
+
+        {/* Database PostgreSQL */}
+        <DatabaseSettings
+          dbConfig={dbConfig}
+          dbStatus={dbStatus}
+          dbBusy={dbBusy}
+          onTest={onTest}
+          onSave={onSave}
+          onSyncNow={onSyncNow}
+          onPull={onPull}
+        />
 
         {/* Zona berbahaya */}
         <div className="mt-6 rounded-card border-2 border-tomato/30 bg-tomato/8 p-4">

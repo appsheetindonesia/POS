@@ -56,6 +56,10 @@ export default function App() {
     drawerOpen, setDrawerOpen,
     settingsOpen, setSettingsOpen,
     toasts, pushToast,
+
+    // Database PostgreSQL
+    dbConfig, dbStatus, dbBusy,
+    testDbConnection, saveDbConfig, syncNow, pullFromServer,
   } = usePosStore();
 
   const [voidTx, setVoidTx] = useState<Transaction | null>(null);
@@ -240,6 +244,13 @@ export default function App() {
           onResetAll={() => requestPin("Reset semua data", resetAll)}
           onClose={() => setSettingsOpen(false)}
           notify={pushToast}
+          dbConfig={dbConfig}
+          dbStatus={dbStatus}
+          dbBusy={dbBusy}
+          onTest={testDbConnection}
+          onSave={saveDbConfig}
+          onSyncNow={syncNow}
+          onPull={pullFromServer}
         />
       )}
 
