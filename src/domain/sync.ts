@@ -12,11 +12,17 @@
  *
  * Semua fungsi murni (deterministik, tanpa I/O) sehingga teruji vitest langsung.
  */
-import type { HeldOrder, Shift, Transaction } from "../types";
+import type { HeldOrder, Ingredient, Shift, Transaction } from "../types";
 import { DELETION_LOG_LIMIT, SYNC_QUEUE_LIMIT } from "./policy";
 
 /** Entitas yang disinkronkan. `meta` = pasangan key/value tunggal (seq). */
-export type SyncEntity = "transactions" | "shifts" | "heldOrders" | "stock" | "meta";
+export type SyncEntity =
+  | "transactions"
+  | "shifts"
+  | "heldOrders"
+  | "stock"
+  | "ingredients"
+  | "meta";
 
 export interface SyncOp {
   kind: "upsert" | "delete";
@@ -41,6 +47,8 @@ export interface SyncLocalState {
   stockMap: Record<string, number>;
   /** productId → stamp epoch ms; tidak ada entri = belum pernah ditulis lokal */
   stockStamp: Record<string, number>;
+  /** Bahan baku (satu sumber kebenaran stok menu ber-resep) */
+  ingredients?: Ingredient[];
   /** Tombstone lokal — melindungi pull dari menghidupkan kembali data yang
    *  sudah dihapus lokal tetapi belum sampai ke server (antrian belum flush). */
   deletions?: Deletion[];
@@ -59,6 +67,7 @@ export interface RemoteData {
   heldOrders: Array<HeldOrder & { updatedAt?: number }>;
   stockMap: Record<string, number>;
   stockStamps: Record<string, number>;
+  ingredients?: Array<Ingredient & { updatedAt?: number }>;
   deletions: Deletion[];
   seq: number;
 }
@@ -71,6 +80,8 @@ export interface MergeResult extends SyncLocalState {
   /** max(localSeq, remote.seq) — nomor nota tidak pernah mundur */
   seq: number;
 }
+
+export const INGREDIENT_ENTITIES = ["ingredients"] as const;
 
 /**
  * Satukan antrian: hanya op TERAKHIR per (entity, key) yang tersisa.
@@ -123,6 +134,9 @@ export function buildFlushOps(local: SyncLocalState, queue: SyncOp[], seq: numbe
           stamp: local.stockStamp[op.key] ?? 0,
         });
       }
+    } else if (op.entity === "ingredients") {
+      const i = (local.ingredients ?? []).find((x) => x.id === op.key);
+      if (i) ops.push({ ...op, data: i });
     }
     // entity "meta": seq ditambahkan di bawah secara eksplisit
   }
@@ -214,6 +228,30 @@ export function mergeServerData(
     }
   }
 
+  // Bahan baku: LWW per ingredient id (bidang updatedAt pada objek)
+  let ingredients = local.ingredients ?? [];
+  if (remote.ingredients && remote.ingredients.length > 0) {
+    const index = new Map(ingredients.map((x, i) => [x.id, i]));
+    let dirtyIng = false;
+    for (const r of remote.ingredients) {
+      const stamp = r.updatedAt ?? 0;
+      const i = index.get(r.id);
+      const localStamp = i !== undefined ? (ingredients[i].updatedAt ?? 0) : -1;
+      if (i === undefined || stamp > localStamp) {
+        if (!dirtyIng) {
+          ingredients = [...ingredients];
+          dirtyIng = true;
+        }
+        if (i === undefined) {
+          index.set(r.id, ingredients.length);
+          ingredients.push(r);
+        } else {
+          ingredients[i] = r;
+        }
+      }
+    }
+  }
+
   // Tombstone (lokal+remote): entitas dengan stamp ≤ deletedAt ikut terhapus
   for (const entity of ["transactions", "shifts", "heldOrders"] as const) {
     for (const d of deletions) {
@@ -235,6 +273,7 @@ export function mergeServerData(
     heldOrders: arrays.heldOrders as HeldOrder[],
     stockMap,
     stockStamp,
+    ingredients,
     deletions,
     removedCount,
     seq: Math.max(localSeq, remote.seq),
